@@ -63,21 +63,70 @@ USOM, RTBH
 - **AbuseIPDB** - [Register](https://www.abuseipdb.com/register)
 - **AlienVault OTX** - [Register](https://otx.alienvault.com)
 
+## How It Works
+
+```mermaid
+flowchart TD
+    A[Start] --> B[Load 21 Sources in Parallel]
+    B --> C{HTTP Request}
+    C -->|Success| D[Extract IPs]
+    C -->|Fail| E{Retry Count < 3?}
+    E -->|Yes| F[Wait 2s/4s/8s] --> C
+    E -->|No / 4xx| G[Log Failure]
+    D --> H[Record Success in Health Tracker]
+    G --> I[Record Failure in Health Tracker]
+    H --> J[Classify IPv4 / IPv6]
+    I --> J
+    J --> K{Success Rate >= 20%?}
+    K -->|Yes| L[Write Output Files]
+    K -->|No| M[Rollback: Keep Existing Files]
+    L --> N[Generate Health Report]
+    M --> N
+    N --> O{Failures or Stale Sources?}
+    O -->|Yes| P[Open GitHub Issue]
+    O -->|No| Q[Close Resolved Issues]
+    P --> R[Done]
+    Q --> R
+```
+
 ## Architecture
 
-```
-main.py              Entry point & orchestrator
-config.py            All settings in one place
-utils.py             IP validation, HTTP with retry
-collector.py         Parallel engine with error isolation
-output_writer.py     File writer with rollback protection
-health_tracker.py    Persistent source health (JSON)
-health_report.py     Markdown report generator
-notifier.py          GitHub Issue notifications
-sources/
-  global_sources.py  15 global sources
-  turkey_sources.py  USOM, RTBH
-  api_sources.py     AbuseIPDB, AlienVault OTX
+```mermaid
+graph LR
+    subgraph Sources
+        GS[Global Sources<br/>15 feeds]
+        TS[Turkey Sources<br/>USOM, RTBH]
+        AS[API Sources<br/>AbuseIPDB, OTX]
+    end
+
+    subgraph Core
+        CO[collector.py<br/>Parallel Engine]
+        UT[utils.py<br/>HTTP + Retry]
+        CF[config.py<br/>Settings]
+    end
+
+    subgraph Output
+        OW[output_writer.py<br/>Rollback Protected]
+        IPv4[ipv4_blacklist.txt]
+        IPv6[ipv6_blacklist.txt]
+        JSON[blacklist_full.json]
+    end
+
+    subgraph Health
+        HT[health_tracker.py<br/>Persistent State]
+        HR[health_report.py<br/>Markdown Report]
+        NO[notifier.py<br/>GitHub Issues]
+    end
+
+    MAIN[main.py<br/>Orchestrator] --> CO
+    CO --> GS & TS & AS
+    GS & TS & AS --> UT
+    UT --> CF
+    CO --> OW
+    OW --> IPv4 & IPv6 & JSON
+    CO --> HT
+    HT --> HR
+    HR --> NO
 ```
 
 ## License

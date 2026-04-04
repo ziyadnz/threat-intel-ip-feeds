@@ -5,9 +5,21 @@ import logging
 import os
 from typing import Dict
 
-from config import IPV4_FILE, IPV6_FILE, OUTPUT_JSON, OUTPUT_DIR, MIN_SUCCESS_RATIO
+from config import IPV4_FILE, IPV4_RAW_FILE, IPV6_FILE, OUTPUT_JSON, OUTPUT_DIR, MIN_SUCCESS_RATIO
 
 logger = logging.getLogger(__name__)
+
+
+def _write_raw_file(filepath: str, results: Dict):
+    """Sadece IP adresleri - yorum veya istatistik yok. Firewall'a dogrudan import icin."""
+    ips = results["ipv4"]["ips"]
+    cidrs = results["ipv4"]["cidrs"]
+    with open(filepath, "w", encoding="utf-8") as f:
+        for ip in ips:
+            f.write(f"{ip}\n")
+        for cidr in cidrs:
+            f.write(f"{cidr}\n")
+    logger.info(f"Raw liste kaydedildi: {filepath} ({len(ips) + len(cidrs)} satir)")
 
 
 def _write_ip_file(filepath: str, results: Dict, version: str):
@@ -62,6 +74,7 @@ def save_results(results: Dict) -> bool:
 
     _write_ip_file(IPV4_FILE, results, "ipv4")
     _write_ip_file(IPV6_FILE, results, "ipv6")
+    _write_raw_file(IPV4_RAW_FILE, results)
 
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)

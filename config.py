@@ -11,6 +11,7 @@ OTX_API_KEY = os.environ.get("OTX_API_KEY", "")
 # Çıktı dosyaları
 OUTPUT_DIR = os.path.join(_BASE_DIR, "output")
 IPV4_FILE = os.path.join(OUTPUT_DIR, "ipv4_blacklist.txt")
+IPV4_RAW_FILE = os.path.join(OUTPUT_DIR, "hourlyIPv4.txt")
 IPV6_FILE = os.path.join(OUTPUT_DIR, "ipv6_blacklist.txt")
 OUTPUT_JSON = os.path.join(OUTPUT_DIR, "blacklist_full.json")
 HEALTH_FILE = os.path.join(OUTPUT_DIR, "source_health.json")

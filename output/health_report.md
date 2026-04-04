@@ -1,8 +1,8 @@
 # IP Blacklist Aggregator - Saglik Raporu
 
-**Tarih:** 2026-04-04T12:17:15.525994+00:00
-**Sure:** 146.99 saniye
-**Basarili:** 19/23
+**Tarih:** 2026-04-04T16:23:57.680728+00:00
+**Sure:** 117.01 saniye
+**Basarili:** 19/21
 
 ## 4 Kaynak 30+ Gundur Veri Donmuyor
 
@@ -17,26 +17,24 @@
 
 | Kaynak | IP Sayisi | Durum |
 |--------|----------|-------|
-| DShield | 105,325 | OK |
-| RTBH (Turkiye) | 41,796 | OK |
+| DShield | 106,665 | OK |
+| RTBH (Turkiye) | 42,172 | OK |
 | Stamparm IPsum | 35,157 | OK |
-| Blocklist.de (all) | 24,748 | OK |
+| Blocklist.de (all) | 24,750 | OK |
 | CINS Army | 15,000 | OK |
-| Blocklist.de (mail) | 14,924 | OK |
-| Blocklist.de (apache) | 8,816 | OK |
-| Blocklist.de (ssh) | 4,519 | OK |
+| Blocklist.de (mail) | 14,940 | OK |
+| Blocklist.de (apache) | 8,807 | OK |
+| Blocklist.de (ssh) | 4,553 | OK |
 | Blocklist.de (bots) | 4,073 | OK |
-| GreenSnow | 3,503 | OK |
+| GreenSnow | 3,576 | OK |
 | USOM (Turkiye) | 2,780 | OK |
 | BinaryDefense | 2,270 | OK |
 | Spamhaus DROP | 1,603 | OK |
-| Tor Exit Nodes | 1,306 | OK |
-| Blocklist.de (bruteforcelogin) | 641 | OK |
+| Tor Exit Nodes | 1,307 | OK |
+| Blocklist.de (bruteforcelogin) | 648 | OK |
 | Emerging Threats | 573 | OK |
 | Blocklist.de (strongips) | 293 | OK |
 | Spamhaus DROPv6 | 97 | OK |
 | Feodo Tracker | 1 | OK |
-| ThreatFox | 0 | BOS |
-| SSLBL | 0 | BOS |
 | AbuseIPDB | 0 | BOS |
 | AlienVault OTX | 0 | BOS |

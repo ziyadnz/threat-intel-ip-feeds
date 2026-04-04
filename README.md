@@ -26,6 +26,21 @@ Enterprise-grade threat intelligence collector that aggregates malicious IP addr
 | **GitHub Issue Alerts** | Automatic issue creation on failures with `source-health` label, auto-close on recovery |
 | **Exit Codes** | `0` = all OK, `1` = partial failures (output written), `2` = critical failure (output preserved) |
 
+## Firewall Ready List
+
+Copy this URL directly into your firewall, SIEM, or threat intel platform:
+
+```
+https://raw.githubusercontent.com/ziyadnz/threat-intel-ip-feeds/main/output/hourlyIPv4.txt
+```
+
+This file contains **only IP addresses and CIDRs**, one per line - no comments, no headers, no metadata. Updated hourly. Designed for direct import into:
+- pfSense, OPNsense, FortiGate, Palo Alto, Cisco ASA
+- Suricata, Snort, Zeek
+- Splunk, QRadar, Wazuh, ELK
+- iptables, nftables, fail2ban
+- Any system that accepts a plain text IP blocklist
+
 ## Quick Start
 
 ```bash
@@ -45,7 +60,8 @@ python main.py
 
 | File | Description |
 |------|-------------|
-| `output/ipv4_blacklist.txt` | IPv4 addresses and CIDRs |
+| `output/hourlyIPv4.txt` | Raw IPv4 list - firewall ready, no comments |
+| `output/ipv4_blacklist.txt` | IPv4 addresses and CIDRs with metadata |
 | `output/ipv6_blacklist.txt` | IPv6 addresses and CIDRs |
 | `output/blacklist_full.json` | Full dataset with metadata |
 | `output/source_health.json` | Source health tracking data |

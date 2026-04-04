@@ -1,5 +1,10 @@
 # Threat Intel IP Blacklist Aggregator
 
+![Build Status](https://img.shields.io/github/actions/workflow/status/ziyadnz/threat-intel-ip-feeds/update.yml)
+![License](https://img.shields.io/github/license/ziyadnz/threat-intel-ip-feeds)
+![Last Commit](https://img.shields.io/github/last-commit/ziyadnz/threat-intel-ip-feeds)
+![Stars](https://img.shields.io/github/stars/ziyadnz/threat-intel-ip-feeds)
+
 Enterprise-grade threat intelligence collector that aggregates malicious IP addresses from **21 free sources** worldwide, producing deduplicated IPv4 and IPv6 blacklists.
 
 ## Features

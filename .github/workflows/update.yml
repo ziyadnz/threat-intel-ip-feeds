@@ -1,0 +1,51 @@
+name: Update IP Blacklists
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Her saat basi
+  workflow_dispatch:       # Manuel tetikleme
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run aggregator
+        id: aggregator
+        env:
+          ABUSEIPDB_API_KEY: ${{ secrets.ABUSEIPDB_API_KEY }}
+          OTX_API_KEY: ${{ secrets.OTX_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python main.py
+        continue-on-error: true
+
+      - name: Commit and push results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update blacklists $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.aggregator.outcome }}" = "failure" ]; then
+            echo "::warning::Aggregator exited with errors. Check output/health_report.md"
+          fi

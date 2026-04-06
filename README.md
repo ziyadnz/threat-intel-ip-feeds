@@ -20,6 +20,8 @@ Copy the URL above into your firewall, SIEM, or any tool that accepts a plain-te
 
 > Full documentation: [FortiGate External Block List Policy Guide](https://docs.fortinet.com/document/fortigate/7.0.0/administration-guide/891236/external-blocklist-policy)
 
+![FortiGate External Block List](https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/resources/761d83e3-4a7b-11e9-94bf-00505692583a/images/d87a548c44fbe9ef14a6d01e377791d0_ext_list_page2.jpg)
+
 <details>
 <summary><b>Step-by-step GUI guide</b></summary>
 

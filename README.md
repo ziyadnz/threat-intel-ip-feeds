@@ -16,23 +16,16 @@ Copy the URL above into your firewall, SIEM, or any tool that accepts a plain-te
 
 ## Quick Usage Examples
 
-### pfSense / OPNsense
-**Firewall > Aliases > URLs** — paste the raw URL, set update frequency to 1 hour.
+### FortiGate
 
-### FortiGate (GUI)
+> Full documentation: [FortiGate External Block List Policy Guide](https://docs.fortinet.com/document/fortigate/7.0.0/administration-guide/891236/external-blocklist-policy)
 
 <details>
-<summary><b>Click to expand step-by-step guide with screenshots</b></summary>
+<summary><b>Step-by-step GUI guide</b></summary>
 
 #### Step 1 — Create External Threat Feed
 
-Navigate to **Security Fabric > External Connectors > Create New**
-
-Select **Threat Feeds > IP Address**
-
-![Step 1 - External Connectors](docs/images/fortigate-step1-external-connectors.png)
-
-#### Step 2 — Configure the Feed
+Navigate to **Security Fabric > External Connectors > Create New > Threat Feeds > IP Address**
 
 | Field | Value |
 |-------|-------|
@@ -41,15 +34,9 @@ Select **Threat Feeds > IP Address**
 | **Refresh Rate** | `60` minutes |
 | **Status** | Enabled |
 
-![Step 2 - Feed Configuration](docs/images/fortigate-step2-feed-config.png)
+After saving, the feed should show a green status with the number of entries loaded under **Security Fabric > External Connectors**.
 
-#### Step 3 — Verify the Feed is Active
-
-After saving, go back to **Security Fabric > External Connectors**. The feed should show a green status with the number of entries loaded.
-
-![Step 3 - Feed Status](docs/images/fortigate-step3-feed-status.png)
-
-#### Step 4 — Create Firewall Policy
+#### Step 2 — Create Inbound Block Policy
 
 Navigate to **Policy & Objects > Firewall Policy > Create New**
 
@@ -65,9 +52,7 @@ Navigate to **Policy & Objects > Firewall Policy > Create New**
 
 > **Important:** Place this policy **above** your allow rules so it takes priority.
 
-![Step 4 - Firewall Policy](docs/images/fortigate-step4-firewall-policy.png)
-
-#### Step 5 (Optional) — Block Outbound to Threat IPs
+#### Step 3 (Optional) — Block Outbound to Threat IPs
 
 Create a second policy to block **internal hosts communicating with known malicious IPs** (C2 callback detection):
 
@@ -83,7 +68,9 @@ Create a second policy to block **internal hosts communicating with known malici
 
 </details>
 
-#### FortiGate CLI Alternative
+<details>
+<summary><b>FortiGate CLI alternative</b></summary>
+
 ```
 config system external-resource
     edit "ThreatIntel-IPFeed"
@@ -107,12 +94,18 @@ config firewall policy
 end
 ```
 
+</details>
+
 ---
 
-### Palo Alto (GUI)
+### Palo Alto
+
+> Full documentation: [PAN-OS External Dynamic Lists](https://docs.paloaltonetworks.com/pan-os/11-0/pan-os-admin/policy/use-an-external-dynamic-list-in-policy/external-dynamic-list)
+
+![Palo Alto External Dynamic List](https://docs.paloaltonetworks.com/content/dam/techdocs/en_US/dita/_graphics/11-0/content-inspection/edl-predefined-lists.png)
 
 <details>
-<summary><b>Click to expand step-by-step guide with screenshots</b></summary>
+<summary><b>Step-by-step GUI guide</b></summary>
 
 #### Step 1 — Create External Dynamic List
 
@@ -125,11 +118,9 @@ Navigate to **Objects > External Dynamic Lists > Add**
 | **Source** | `https://raw.githubusercontent.com/ziyadnz/threat-intel-ip-feeds/main/output/hourlyIPv4.txt` |
 | **Repeat** | `Hourly` |
 
-![Step 1 - External Dynamic List](docs/images/paloalto-step1-edl.png)
-
 Click **OK** to save.
 
-#### Step 2 — Create Security Policy
+#### Step 2 — Create Inbound Block Policy
 
 Navigate to **Policies > Security > Add**
 
@@ -144,8 +135,6 @@ Navigate to **Policies > Security > Add**
 | **Log Forwarding** | Select your log profile |
 
 > **Important:** Move this rule **above** your allow rules.
-
-![Step 2 - Security Policy](docs/images/paloalto-step2-security-policy.png)
 
 #### Step 3 — Block Outbound (C2 Detection)
 
@@ -163,18 +152,20 @@ Add a second rule:
 
 #### Step 4 — Commit
 
-Click **Commit** to apply changes. Verify the EDL is loaded under **Objects > External Dynamic Lists** — click **more** on the entry to see the number of IPs loaded.
-
-![Step 4 - Verify EDL](docs/images/paloalto-step3-verify.png)
+Click **Commit** to apply changes. Verify the EDL is loaded under **Objects > External Dynamic Lists** — click the entry to see the number of IPs loaded.
 
 </details>
 
-#### Palo Alto CLI Alternative
+<details>
+<summary><b>Palo Alto CLI alternative</b></summary>
+
 ```
 set address ThreatIntel-IPFeed external-dynamic-list url "https://raw.githubusercontent.com/ziyadnz/threat-intel-ip-feeds/main/output/hourlyIPv4.txt"
 set address ThreatIntel-IPFeed external-dynamic-list type ip
 set address ThreatIntel-IPFeed external-dynamic-list repeat hourly
 ```
+
+</details>
 
 ### iptables
 ```bash

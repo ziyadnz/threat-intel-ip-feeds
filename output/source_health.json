@@ -17,15 +17,6 @@
     "total_runs": 3,
     "total_failures": 0
   },
-  "ThreatFox": {
-    "last_success": null,
-    "last_failure": null,
-    "last_failure_reason": null,
-    "last_ip_count": 0,
-    "consecutive_failures": 0,
-    "total_runs": 2,
-    "total_failures": 0
-  },
   "Blocklist.de (ssh)": {
     "last_success": "2026-04-04T16:22:01.039629+00:00",
     "last_failure": null,
@@ -33,15 +24,6 @@
     "last_ip_count": 4553,
     "consecutive_failures": 0,
     "total_runs": 3,
-    "total_failures": 0
-  },
-  "SSLBL": {
-    "last_success": null,
-    "last_failure": null,
-    "last_failure_reason": null,
-    "last_ip_count": 0,
-    "consecutive_failures": 0,
-    "total_runs": 2,
     "total_failures": 0
   },
   "Blocklist.de (apache)": {

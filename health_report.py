@@ -33,7 +33,7 @@ def generate_report(results: Dict) -> str:
         lines.append(f"| Kaynak | Hata |")
         lines.append(f"|--------|------|")
         for src, err in failures.items():
-            lines.append(f"| {src} | {err[:100]} |")
+            lines.append(f"| {src} | {err[:200]} |")
         lines.append(f"")
 
     # Stale kaynaklar

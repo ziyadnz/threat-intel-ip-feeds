@@ -55,8 +55,9 @@ def is_ipv6(ip_str: str) -> bool:
 
 def safe_request(url: str, headers: Optional[Dict] = None, timeout: int = REQUEST_TIMEOUT,
                  method: str = "GET", json_data: Optional[Dict] = None,
-                 retries: int = MAX_RETRIES) -> Optional[requests.Response]:
-    """Güvenli HTTP isteği - otomatik retry ve exponential backoff ile."""
+                 retries: int = MAX_RETRIES) -> requests.Response:
+    """Güvenli HTTP isteği - otomatik retry ve exponential backoff ile.
+    Tüm denemeler başarısız olursa exception fırlatır (return None yerine)."""
     last_error = None
 
     for attempt in range(retries):
@@ -76,7 +77,7 @@ def safe_request(url: str, headers: Optional[Dict] = None, timeout: int = REQUES
                 status = e.response.status_code
                 if 400 <= status < 500 and status != 429:
                     logger.error(f"[{url}] Kalıcı hata ({status}), retry yapılmıyor: {e}")
-                    return None
+                    raise
 
             if attempt < retries - 1:
                 wait = RETRY_BACKOFF ** (attempt + 1)
@@ -85,8 +86,9 @@ def safe_request(url: str, headers: Optional[Dict] = None, timeout: int = REQUES
                 time.sleep(wait)
             else:
                 logger.error(f"[{url}] {retries} deneme sonrası başarısız: {e}")
+                raise
 
-    return None
+    raise last_error
 
 
 def extract_ips_from_text(text: str) -> Set[str]:

@@ -55,8 +55,17 @@ def _run_source(name, fetch_fn):
         ips, _ = fetch_fn()
         return name, ips, None  # (kaynak_adı, ip_set, hata)
     except Exception as e:
-        logger.error(f"[{name}] Beklenmeyen hata: {e}", exc_info=True)
-        return name, set(), str(e)
+        # Detaylı hata mesajı: HTTP status kodu + URL varsa ekle
+        error_type = type(e).__name__
+        detail = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            status = e.response.status_code
+            url = e.response.url
+            error_msg = f"HTTP {status} | {url} | {error_type}: {detail}"
+        else:
+            error_msg = f"{error_type}: {detail}"
+        logger.error(f"[{name}] {error_msg}", exc_info=True)
+        return name, set(), error_msg
 
 
 def collect_all() -> Dict:

@@ -53,7 +53,11 @@ class AbuseIPDBSource(ThreatSource):
         if current_hour not in self._allowed_hours:
             return self._load_cache()
 
-        headers = {"Key": self._api_key, "Accept": "application/json"}
+        headers = {
+            "Key": self._api_key,
+            "Accept": "application/json",
+            "User-Agent": "IP-Blacklist-Aggregator/5.0",
+        }
         url = (
             f"https://api.abuseipdb.com/api/v2/blacklist"
             f"?confidenceMinimum={self._confidence_min}&limit=10000"
@@ -125,7 +129,10 @@ class AlienVaultOTXSource(ThreatSource):
             logger.warning(f"[{self.name}] No API key, skipping.")
             return set()
 
-        headers = {"X-OTX-API-KEY": self._api_key}
+        headers = {
+            "X-OTX-API-KEY": self._api_key,
+            "User-Agent": "IP-Blacklist-Aggregator/5.0",
+        }
         result = set()
         page = 1
 

@@ -75,10 +75,10 @@ class AiohttpClient(HttpClient):
                 )
                 if resp.status >= 400:
                     body = await resp.text()
-                    # Permanent 4xx (except 429) — don't retry
-                    if 400 <= resp.status < 500 and resp.status != 429:
+                    # Permanent 4xx — don't retry (includes 429 rate limit)
+                    if 400 <= resp.status < 500:
                         logger.error(
-                            f"[{url}] Permanent error ({resp.status})"
+                            f"[{url}] Client error ({resp.status}), no retry"
                         )
                         raise aiohttp.ClientResponseError(
                             resp.request_info, resp.history,
@@ -93,9 +93,9 @@ class AiohttpClient(HttpClient):
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
 
-                # Check for permanent 4xx in ClientResponseError
+                # All 4xx errors are permanent — don't retry
                 if isinstance(e, aiohttp.ClientResponseError):
-                    if 400 <= e.status < 500 and e.status != 429:
+                    if 400 <= e.status < 500:
                         raise
 
                 if attempt < self._max_retries - 1:

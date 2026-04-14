@@ -62,7 +62,12 @@ class AbuseIPDBSource(ThreatSource):
             f"https://api.abuseipdb.com/api/v2/blacklist"
             f"?confidenceMinimum={self._confidence_min}&limit=10000"
         )
-        data = await self._http.get_json(url, headers=headers)
+
+        try:
+            data = await self._http.get_json(url, headers=headers)
+        except Exception as e:
+            logger.warning(f"[{self.name}] API failed ({e}), falling back to cache")
+            return self._load_cache()
 
         result = set()
         for entry in data.get("data", []):
@@ -104,16 +109,25 @@ class AbuseIPDBSource(ThreatSource):
 
 
 class AlienVaultOTXSource(ThreatSource):
-    """AlienVault OTX — community threat intel pulses with pagination."""
+    """AlienVault OTX — community threat intel pulses with pagination.
+
+    Strategy:
+    1. Try fetching all pages from the API
+    2. If API succeeds → save to cache, return fresh data
+    3. If API fails entirely → fall back to last successful cache
+    4. If API partially succeeds → return what we got (still better than stale cache)
+    """
 
     def __init__(
         self,
         http: HttpClient,
         api_key: str,
+        cache_dir: str,
         max_pages: int = 20,
     ):
         self._http = http
         self._api_key = api_key
+        self._cache_path = os.path.join(cache_dir, "otx_cache.json")
         self._max_pages = max_pages
 
     @property
@@ -135,13 +149,31 @@ class AlienVaultOTXSource(ThreatSource):
         }
         result = set()
         page = 1
+        consecutive_failures = 0
+        max_consecutive_failures = 3
 
         while page <= self._max_pages:
             url = (
                 f"https://otx.alienvault.com/api/v1/pulses/subscribed"
                 f"?limit=50&page={page}"
             )
-            data = await self._http.get_json(url, headers=headers)
+            try:
+                data = await self._http.get_json(url, headers=headers, timeout=90)
+                consecutive_failures = 0
+            except Exception as e:
+                consecutive_failures += 1
+                logger.warning(
+                    f"[{self.name}] Page {page} failed ({e}), skipping"
+                )
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.warning(
+                        f"[{self.name}] {max_consecutive_failures} consecutive "
+                        f"failures, stopping pagination"
+                    )
+                    break
+                page += 1
+                continue
+
             pulses = data.get("results", [])
             if not pulses:
                 break
@@ -159,4 +191,38 @@ class AlienVaultOTXSource(ThreatSource):
                 break
             page += 1
 
+        # Cache strategy: got data → save it; got nothing → load previous
+        if result:
+            self._save_cache(result)
+            logger.info(f"[{self.name}] {len(result)} IPs (cache updated)")
+        else:
+            result = self._load_cache()
+
         return result
+
+    def _save_cache(self, ips: Set[IPAddress]):
+        try:
+            data = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "ips": sorted(ip.raw for ip in ips),
+            }
+            with open(self._cache_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except OSError as e:
+            logger.warning(f"[{self.name}] Cache write failed: {e}")
+
+    def _load_cache(self) -> Set[IPAddress]:
+        try:
+            with open(self._cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            result = set()
+            for raw in data.get("ips", []):
+                ip = IPAddress.parse(raw)
+                if ip:
+                    result.add(ip)
+            ts = data.get("timestamp", "?")
+            logger.info(f"[{self.name}] Loaded {len(result)} from cache ({ts})")
+            return result
+        except (FileNotFoundError, json.JSONDecodeError):
+            logger.warning(f"[{self.name}] No cache available")
+            return set()

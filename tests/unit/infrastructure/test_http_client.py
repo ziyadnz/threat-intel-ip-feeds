@@ -85,6 +85,18 @@ class TestAiohttpClient:
         await client.close()
 
     @pytest.mark.asyncio
+    async def test_no_retry_on_429(self, mock_aiohttp):
+        # Arrange
+        url = "http://test.example.com/ratelimit"
+        mock_aiohttp.get(url, status=429)
+        client = AiohttpClient(max_retries=3)
+
+        # Act & Assert — raises immediately, no retry
+        with pytest.raises(Exception):
+            await client.get(url)
+        await client.close()
+
+    @pytest.mark.asyncio
     async def test_session_close(self, mock_aiohttp):
         # Arrange
         mock_aiohttp.get("http://test.example.com/x", body="ok")

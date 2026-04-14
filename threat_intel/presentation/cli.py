@@ -114,7 +114,7 @@ def _build_sources(http: AiohttpClient, config: AppConfig) -> list:
         UsomSource(http),
         RtbhSource(http),
         AbuseIPDBSource(http, config.abuseipdb_key, config.output_dir),
-        AlienVaultOTXSource(http, config.otx_key),
+        AlienVaultOTXSource(http, config.otx_key, config.output_dir),
     ]
 
 

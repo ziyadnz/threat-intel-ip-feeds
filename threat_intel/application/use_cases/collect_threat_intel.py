@@ -40,10 +40,12 @@ class CollectThreatIntelUseCase:
         sources: List[ThreatSource],
         whitelist_repo: WhitelistRepository,
         health_repo: HealthRepository,
+        max_concurrency: int = 5,
     ):
         self._sources = sources
         self._whitelist_repo = whitelist_repo
         self._health_repo = health_repo
+        self._semaphore = asyncio.Semaphore(max_concurrency)
 
     async def execute(self) -> CollectionResult:
         start = datetime.now(timezone.utc)
@@ -104,12 +106,22 @@ class CollectThreatIntelUseCase:
         )
 
     async def _fetch_all_concurrent(self) -> List[SourceResult]:
-        """Launch all source fetches concurrently via asyncio.gather."""
+        """Launch all source fetches with bounded concurrency via semaphore.
+
+        At most max_concurrency sources run simultaneously.
+        This prevents API throttling from services that detect
+        concurrent connection bursts from the same IP.
+        """
         tasks = [
-            self._safe_fetch(source)
+            self._safe_fetch_with_limit(source)
             for source in self._sources
         ]
         return list(await asyncio.gather(*tasks))
+
+    async def _safe_fetch_with_limit(self, source: ThreatSource) -> SourceResult:
+        """Acquire semaphore before fetching — limits concurrent requests."""
+        async with self._semaphore:
+            return await self._safe_fetch(source)
 
     @staticmethod
     async def _safe_fetch(source: ThreatSource) -> SourceResult:

@@ -9,6 +9,7 @@ from threat_intel.domain.entities import IPAddress
 from threat_intel.domain.ports import HttpClient, ThreatSource
 from threat_intel.domain.services import IPValidator
 from threat_intel.infrastructure.sources.base import TextListSource
+from threat_intel.infrastructure.sources.urls import RTBH, USOM_API
 
 
 class UsomSource(ThreatSource):
@@ -33,7 +34,7 @@ class UsomSource(ThreatSource):
         page = 1
 
         while len(result) < self._max_ips:
-            url = f"https://www.usom.gov.tr/api/address/index?type=ip&page={page}"
+            url = f"{USOM_API}?type=ip&page={page}"
             data = await self._http.get_json(url, headers={"accept": "application/json"})
 
             models = data.get("models", [])
@@ -62,6 +63,4 @@ class RtbhSource(TextListSource):
     """RTBH (Turkey) — national-level blocklist."""
 
     def __init__(self, http: HttpClient):
-        super().__init__(http, "RTBH (Turkiye)",
-                         "https://list.rtbh.com.tr/output.txt",
-                         "government-feed")
+        super().__init__(http, "RTBH (Turkiye)", RTBH, "government-feed")

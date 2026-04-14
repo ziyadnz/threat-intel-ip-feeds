@@ -2,6 +2,7 @@
 
 These sources require API keys and have rate limits.
 Cache management is handled here as infrastructure concern.
+URLs are imported from urls.py — the single source of truth for endpoints.
 """
 
 from __future__ import annotations
@@ -10,11 +11,15 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional, Set
+from typing import Set
 
 from threat_intel.domain.entities import IPAddress
 from threat_intel.domain.ports import HttpClient, ThreatSource
 from threat_intel.domain.services import IPValidator
+from threat_intel.infrastructure.sources.urls import (
+    ABUSEIPDB_BLACKLIST,
+    ALIENVAULT_OTX_PULSES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +64,7 @@ class AbuseIPDBSource(ThreatSource):
             "User-Agent": "IP-Blacklist-Aggregator/5.0",
         }
         url = (
-            f"https://api.abuseipdb.com/api/v2/blacklist"
+            f"{ABUSEIPDB_BLACKLIST}"
             f"?confidenceMinimum={self._confidence_min}&limit=10000"
         )
 
@@ -113,9 +118,9 @@ class AlienVaultOTXSource(ThreatSource):
 
     Strategy:
     1. Try fetching all pages from the API
-    2. If API succeeds → save to cache, return fresh data
-    3. If API fails entirely → fall back to last successful cache
-    4. If API partially succeeds → return what we got (still better than stale cache)
+    2. If API succeeds -> save to cache, return fresh data
+    3. If API fails entirely -> fall back to last successful cache
+    4. If API partially succeeds -> return what we got (still better than stale cache)
     """
 
     def __init__(
@@ -153,10 +158,7 @@ class AlienVaultOTXSource(ThreatSource):
         max_consecutive_failures = 3
 
         while page <= self._max_pages:
-            url = (
-                f"https://otx.alienvault.com/api/v1/pulses/subscribed"
-                f"?limit=50&page={page}"
-            )
+            url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={page}"
             try:
                 data = await self._http.get_json(url, headers=headers, timeout=90)
                 consecutive_failures = 0
@@ -191,7 +193,7 @@ class AlienVaultOTXSource(ThreatSource):
                 break
             page += 1
 
-        # Cache strategy: got data → save it; got nothing → load previous
+        # Cache strategy: got data -> save it; got nothing -> load previous
         if result:
             self._save_cache(result)
             logger.info(f"[{self.name}] {len(result)} IPs (cache updated)")

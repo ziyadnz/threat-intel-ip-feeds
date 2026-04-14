@@ -2,6 +2,7 @@
 
 Each class implements ThreatSource and encapsulates one feed's parsing logic.
 HTTP is injected via the async HttpClient port — never imported directly.
+URLs are imported from urls.py — the single source of truth for endpoints.
 """
 
 from __future__ import annotations
@@ -12,15 +13,26 @@ from threat_intel.domain.entities import IPAddress
 from threat_intel.domain.ports import HttpClient
 from threat_intel.domain.services import IPValidator
 from threat_intel.infrastructure.sources.base import TextListSource
+from threat_intel.infrastructure.sources.urls import (
+    BINARY_DEFENSE,
+    BLOCKLIST_DE,
+    CINS_ARMY,
+    DSHIELD_INTELFEED,
+    EMERGING_THREATS,
+    FEODO_TRACKER,
+    GREENSNOW,
+    SPAMHAUS_DROP,
+    SPAMHAUS_DROPV6,
+    STAMPARM_IPSUM,
+    TOR_EXIT_NODES,
+)
 
 
 class SpamhausDropSource(TextListSource):
     """Spamhaus DROP — hijacked network CIDRs."""
 
     def __init__(self, http: HttpClient):
-        super().__init__(http, "Spamhaus DROP",
-                         "https://www.spamhaus.org/drop/drop.txt",
-                         "infrastructure")
+        super().__init__(http, "Spamhaus DROP", SPAMHAUS_DROP, "infrastructure")
 
     def _parse(self, text: str) -> Set[IPAddress]:
         result = set()
@@ -39,9 +51,7 @@ class SpamhausDropV6Source(TextListSource):
     """Spamhaus DROPv6 — hijacked IPv6 CIDRs."""
 
     def __init__(self, http: HttpClient):
-        super().__init__(http, "Spamhaus DROPv6",
-                         "https://www.spamhaus.org/drop/dropv6.txt",
-                         "infrastructure")
+        super().__init__(http, "Spamhaus DROPv6", SPAMHAUS_DROPV6, "infrastructure")
 
     def _parse(self, text: str) -> Set[IPAddress]:
         result = set()
@@ -60,9 +70,7 @@ class FeodoTrackerSource(TextListSource):
     """Feodo Tracker (abuse.ch) — botnet C2 server IPs."""
 
     def __init__(self, http: HttpClient):
-        super().__init__(http, "Feodo Tracker",
-                         "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt",
-                         "botnet-c2")
+        super().__init__(http, "Feodo Tracker", FEODO_TRACKER, "botnet-c2")
 
 
 class DShieldSource:
@@ -80,11 +88,8 @@ class DShieldSource:
         return "scanner"
 
     async def fetch(self) -> Set[IPAddress]:
-        headers = {"User-Agent": "IP-Blacklist-Aggregator/4.0"}
-        data = await self._http.get_json(
-            "https://isc.sans.edu/api/intelfeed?json",
-            headers=headers,
-        )
+        headers = {"User-Agent": "IP-Blacklist-Aggregator/5.0"}
+        data = await self._http.get_json(DSHIELD_INTELFEED, headers=headers)
         result = set()
         if isinstance(data, list):
             for entry in data:
@@ -102,32 +107,26 @@ class BlocklistDeSource(TextListSource):
         super().__init__(
             http,
             f"Blocklist.de ({service})",
-            f"https://lists.blocklist.de/lists/{service}.txt",
+            BLOCKLIST_DE.format(service=service),
             "attacker",
         )
 
 
 class CinsArmySource(TextListSource):
     def __init__(self, http: HttpClient):
-        super().__init__(http, "CINS Army",
-                         "https://cinsscore.com/list/ci-badguys.txt",
-                         "scanner")
+        super().__init__(http, "CINS Army", CINS_ARMY, "scanner")
 
 
 class EmergingThreatsSource(TextListSource):
     def __init__(self, http: HttpClient):
-        super().__init__(http, "Emerging Threats",
-                         "https://rules.emergingthreats.net/blockrules/compromised-ips.txt",
-                         "compromised")
+        super().__init__(http, "Emerging Threats", EMERGING_THREATS, "compromised")
 
 
 class BinaryDefenseSource(TextListSource):
     """BinaryDefense Artillery ban list — custom parsing for comment lines."""
 
     def __init__(self, http: HttpClient):
-        super().__init__(http, "BinaryDefense",
-                         "https://www.binarydefense.com/banlist.txt",
-                         "attacker")
+        super().__init__(http, "BinaryDefense", BINARY_DEFENSE, "attacker")
 
     def _parse(self, text: str) -> Set[IPAddress]:
         result = set()
@@ -142,16 +141,12 @@ class BinaryDefenseSource(TextListSource):
 
 class GreenSnowSource(TextListSource):
     def __init__(self, http: HttpClient):
-        super().__init__(http, "GreenSnow",
-                         "https://blocklist.greensnow.co/greensnow.txt",
-                         "attacker")
+        super().__init__(http, "GreenSnow", GREENSNOW, "attacker")
 
 
 class TorExitSource(TextListSource):
     def __init__(self, http: HttpClient):
-        super().__init__(http, "Tor Exit Nodes",
-                         "https://check.torproject.org/torbulkexitlist",
-                         "anonymizer")
+        super().__init__(http, "Tor Exit Nodes", TOR_EXIT_NODES, "anonymizer")
 
 
 class StamparmIpsumSource:
@@ -170,10 +165,7 @@ class StamparmIpsumSource:
         return "multi-source"
 
     async def fetch(self) -> Set[IPAddress]:
-        text = await self._http.get(
-            "https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt",
-            timeout=120,
-        )
+        text = await self._http.get(STAMPARM_IPSUM, timeout=120)
         result = set()
         for line in text.splitlines():
             line = line.strip()

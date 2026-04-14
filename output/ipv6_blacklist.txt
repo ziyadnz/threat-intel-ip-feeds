@@ -1,7 +1,7 @@
-# IPV6 Blacklist
-# Updated: 2026-04-04T16:23:57.680728+00:00
-# IPs: 0 | CIDRs: 97
-# Duration: 117.01s
+# IPv6 Blacklist
+# Updated: 2026-04-14T21:40:18.197889+00:00
+# IPs: 0 | CIDRs: 96
+# Duration: 207.78s
 # Sources: 19/21 OK
 #
 #
@@ -62,7 +62,6 @@
 2a09:ac80::/29
 2a0a:53c0:938::/48
 2a0a:6240::/29
-2a0a:6340::/29
 2a0a:a840::/29
 2a0a:c00::/29
 2a0b:3e80::/29

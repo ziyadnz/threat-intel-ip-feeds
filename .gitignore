@@ -3,3 +3,6 @@ __pycache__/
 *.log
 .env
 .pytest_cache/
+output/stix_bundle.json
+output/blacklist_full.json
+output/blacklist.csv

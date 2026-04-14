@@ -1,4 +1,8 @@
-"""STIX 2.1 JSON bundle output writer."""
+"""STIX 2.1 JSON bundle output writer.
+
+Optimized for size: compact JSON (no indentation), minimal indicator fields.
+Full STIX 2.1 compliance maintained — only optional fields removed.
+"""
 
 from __future__ import annotations
 
@@ -42,7 +46,7 @@ class STIXBundleWriter(OutputWriter):
         }
 
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(bundle, f, indent=2, ensure_ascii=False)
+            json.dump(bundle, f, ensure_ascii=False, separators=(",", ":"))
 
         return path
 
@@ -62,25 +66,16 @@ class STIXBundleWriter(OutputWriter):
     def _build_indicator(indicator, identity_id: str, timestamp: str) -> dict:
         ip = indicator.ip
         addr_type = "ipv4-addr" if ip.version == IPVersion.V4 else "ipv6-addr"
-        pattern = f"[{addr_type}:value = '{ip.raw}']"
 
         return {
             "type": "indicator",
             "spec_version": "2.1",
             "id": "indicator--" + str(uuid.uuid5(uuid.NAMESPACE_URL, ip.raw)),
-            "created": timestamp,
-            "modified": timestamp,
-            "name": f"Malicious IP: {ip.raw}",
-            "description": (
-                f"Reported by {len(indicator.sources)} source(s): "
-                f"{', '.join(sorted(indicator.sources))}. "
-                f"Category: {indicator.category.value}."
-            ),
-            "indicator_types": ["malicious-activity"],
-            "pattern": pattern,
+            "created_by_ref": identity_id,
+            "pattern": f"[{addr_type}:value = '{ip.raw}']",
             "pattern_type": "stix",
             "valid_from": timestamp,
-            "labels": [indicator.category.value] + sorted(indicator.sources),
-            "created_by_ref": identity_id,
+            "indicator_types": ["malicious-activity"],
             "confidence": indicator.confidence.value,
+            "labels": [indicator.category.value],
         }

@@ -91,6 +91,17 @@ class ReportHealthUseCase:
             )
         lines.append("")
 
+        if result.whitelist_hits:
+            lines += [
+                "## Whitelist Filtered IPs", "",
+                "| IP | Reported By |",
+                "|-----|------------|",
+            ]
+            for hit in sorted(result.whitelist_hits, key=lambda h: h.ip.raw):
+                sources_str = ", ".join(sorted(hit.sources))
+                lines.append(f"| {hit.ip.raw} | {sources_str} |")
+            lines.append("")
+
         if failures:
             lines += [
                 "## Failed Sources This Run", "",

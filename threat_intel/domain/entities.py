@@ -270,6 +270,14 @@ class OverlapMetrics:
     top_pair_overlaps: dict = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class WhitelistHit:
+    """A single whitelisted IP and the sources that tried to report it."""
+
+    ip: IPAddress
+    sources: FrozenSet[str]
+
+
 @dataclass
 class CollectionResult:
     """Aggregate root for a complete collection run."""
@@ -278,8 +286,12 @@ class CollectionResult:
     elapsed_seconds: float
     source_results: list  # List[SourceResult]
     indicators: list  # List[ThreatIndicator]
-    whitelist_filtered_count: int = 0
+    whitelist_hits: list = field(default_factory=list)  # List[WhitelistHit]
     overlap: OverlapMetrics = field(default_factory=OverlapMetrics)
+
+    @property
+    def whitelist_filtered_count(self) -> int:
+        return len(self.whitelist_hits)
 
     @property
     def total_sources(self) -> int:

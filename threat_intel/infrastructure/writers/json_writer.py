@@ -26,6 +26,10 @@ class FullJSONWriter(OutputWriter):
             "total_sources": result.total_sources,
             "successful_sources": result.successful_sources,
             "whitelist_filtered": result.whitelist_filtered_count,
+            "whitelist_details": {
+                hit.ip.raw: sorted(hit.sources)
+                for hit in result.whitelist_hits
+            },
             "sources": {
                 sr.source_name: sr.ip_count
                 for sr in result.source_results

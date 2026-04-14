@@ -174,6 +174,14 @@ def _print_summary(result: CollectionResult):
         extra = f"  (uniq:{u} ovlp:{s})" if u != "" else ""
         print(f"  {mark} {sr.source_name:<40} {sr.ip_count:>8,}{extra}")
 
+    if result.whitelist_hits:
+        print(f"{'=' * 60}")
+        print(f"  WHITELIST FILTERED:")
+        print(f"  {'—' * 56}")
+        for hit in sorted(result.whitelist_hits, key=lambda h: h.ip.raw):
+            sources_str = ", ".join(sorted(hit.sources))
+            print(f"  - {hit.ip.raw:<20} ← {sources_str}")
+
     if result.failed_sources:
         print(f"{'=' * 60}")
         print(f"  ERRORS:")

@@ -17,6 +17,7 @@ from threat_intel.domain.entities import (
     IPAddress,
     SourceHealthRecord,
     SourceResult,
+    WhitelistHit,
 )
 from threat_intel.domain.ports import (
     HealthRepository,
@@ -63,18 +64,31 @@ class CollectThreatIntelUseCase:
         # Update health records
         self._update_health(source_results, start)
 
-        # Aggregate IPs with source attribution
+        # Aggregate IPs with source attribution + whitelist tracking
         ip_to_sources: Dict[str, Set[str]] = defaultdict(set)
         ip_objects: Dict[str, IPAddress] = {}
+        wl_ip_to_sources: Dict[str, Set[str]] = defaultdict(set)
+        wl_ip_objects: Dict[str, IPAddress] = {}
 
         for result in source_results:
             if not result.is_success:
                 continue
             for ip in result.ips:
                 if wl_filter.is_whitelisted(ip):
-                    continue
-                ip_to_sources[ip.raw].add(result.source_name)
-                ip_objects[ip.raw] = ip
+                    wl_ip_to_sources[ip.raw].add(result.source_name)
+                    wl_ip_objects[ip.raw] = ip
+                else:
+                    ip_to_sources[ip.raw].add(result.source_name)
+                    ip_objects[ip.raw] = ip
+
+        # Build whitelist hits
+        whitelist_hits = [
+            WhitelistHit(
+                ip=wl_ip_objects[ip_raw],
+                sources=frozenset(srcs),
+            )
+            for ip_raw, srcs in wl_ip_to_sources.items()
+        ]
 
         # Freeze source sets
         frozen_ip_sources = {
@@ -90,10 +104,6 @@ class CollectThreatIntelUseCase:
         source_names = [s.name for s in self._sources]
         overlap = OverlapAnalyzer.analyze(frozen_ip_sources, source_names)
 
-        # Count whitelist hits
-        total_raw_ips = sum(r.ip_count for r in source_results if r.is_success)
-        wl_filtered = total_raw_ips - len(ip_objects)
-
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
 
         return CollectionResult(
@@ -101,7 +111,7 @@ class CollectThreatIntelUseCase:
             elapsed_seconds=round(elapsed, 2),
             source_results=source_results,
             indicators=indicators,
-            whitelist_filtered_count=max(0, wl_filtered),
+            whitelist_hits=whitelist_hits,
             overlap=overlap,
         )
 

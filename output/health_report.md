@@ -1,7 +1,7 @@
 # IP Blacklist Aggregator - Health Report
 
-**Date:** 2026-04-14T21:40:18.197889+00:00
-**Duration:** 207.78s
+**Date:** 2026-04-14T22:35:23.501377+00:00
+**Duration:** 111.62s
 **Successful:** 19/21
 
 ## Failed Sources This Run
@@ -14,8 +14,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Unique to single source | 126,928 |
-| Found in multiple sources | 37,898 |
+| Unique to single source | 127,124 |
+| Found in multiple sources | 37,919 |
 | Max source overlap | 7 |
 | Avg sources per IP | 1.41 |
 
@@ -23,25 +23,25 @@
 
 | Source | Unique | Shared | Unique % |
 |--------|--------|--------|----------|
-| DShield | 91,378 | 15,549 | 85.5% |
-| RTBH (Turkiye) | 19,105 | 17,352 | 52.4% |
-| Stamparm IPsum | 7,378 | 25,736 | 22.3% |
-| CINS Army | 5,906 | 9,093 | 39.4% |
+| DShield | 91,384 | 15,543 | 85.5% |
+| RTBH (Turkiye) | 19,114 | 17,414 | 52.3% |
+| Stamparm IPsum | 7,398 | 25,716 | 22.3% |
+| CINS Army | 5,945 | 9,054 | 39.6% |
 | Spamhaus DROP | 1,590 | 0 | 100.0% |
 | BinaryDefense | 717 | 3,235 | 18.1% |
-| GreenSnow | 577 | 3,241 | 15.1% |
-| AlienVault OTX | 143 | 0 | 100.0% |
+| GreenSnow | 579 | 3,221 | 15.2% |
+| AlienVault OTX | 257 | 0 | 100.0% |
 | Spamhaus DROPv6 | 96 | 0 | 100.0% |
-| Blocklist.de (all) | 27 | 10,536 | 0.3% |
+| Blocklist.de (all) | 29 | 10,539 | 0.3% |
 | Blocklist.de (strongips) | 6 | 257 | 2.3% |
-| Tor Exit Nodes | 3 | 1,296 | 0.2% |
+| Tor Exit Nodes | 6 | 1,299 | 0.5% |
 | Emerging Threats | 2 | 385 | 0.5% |
+| Blocklist.de (apache) | 1 | 8,466 | 0.0% |
 | Feodo Tracker | 0 | 1 | 0.0% |
-| Blocklist.de (ssh) | 0 | 792 | 0.0% |
-| Blocklist.de (mail) | 0 | 8,976 | 0.0% |
-| Blocklist.de (apache) | 0 | 8,471 | 0.0% |
-| Blocklist.de (bots) | 0 | 241 | 0.0% |
-| Blocklist.de (bruteforcelogin) | 0 | 355 | 0.0% |
+| Blocklist.de (ssh) | 0 | 799 | 0.0% |
+| Blocklist.de (mail) | 0 | 8,979 | 0.0% |
+| Blocklist.de (bots) | 0 | 239 | 0.0% |
+| Blocklist.de (bruteforcelogin) | 0 | 351 | 0.0% |
 | USOM (Turkiye) | 0 | 0 | N/A |
 | AbuseIPDB | 0 | 0 | N/A |
 
@@ -49,15 +49,15 @@
 
 | Pair | Shared IPs |
 |------|-----------|
-| Stamparm IPsum & RTBH (Turkiye) | 15,803 |
+| Stamparm IPsum & RTBH (Turkiye) | 15,818 |
 | DShield & Stamparm IPsum | 13,951 |
-| DShield & RTBH (Turkiye) | 9,348 |
-| Blocklist.de (all) & Blocklist.de (mail) | 8,976 |
-| Blocklist.de (all) & Blocklist.de (apache) | 8,471 |
-| CINS Army & Stamparm IPsum | 8,110 |
+| DShield & RTBH (Turkiye) | 9,354 |
+| Blocklist.de (all) & Blocklist.de (mail) | 8,979 |
+| Blocklist.de (all) & Blocklist.de (apache) | 8,466 |
+| CINS Army & Stamparm IPsum | 8,043 |
 | Blocklist.de (mail) & Blocklist.de (apache) | 7,967 |
-| CINS Army & RTBH (Turkiye) | 5,055 |
-| DShield & CINS Army | 3,785 |
+| CINS Army & RTBH (Turkiye) | 5,051 |
+| DShield & CINS Army | 3,703 |
 | BinaryDefense & Stamparm IPsum | 3,153 |
 
 ## 1 Sources Stale (30+ days)
@@ -70,29 +70,29 @@
 
 | Source | Failures | Last Failure | Reason |
 |--------|----------|-------------|--------|
-| USOM (Turkiye) | 1 | 2026-04-14 | ClientResponseError: 429, message='<html>\r\n<head><title>42 |
+| USOM (Turkiye) | 2 | 2026-04-14 | ClientResponseError: 429, message='<html>\r\n<head><title>42 |
 
 ## All Sources
 
 | Source | IPs | Status |
 |--------|-----|--------|
 | DShield | 106,927 | OK |
-| RTBH (Turkiye) | 36,457 | OK |
+| RTBH (Turkiye) | 36,528 | OK |
 | Stamparm IPsum | 33,114 | OK |
 | CINS Army | 14,999 | OK |
-| Blocklist.de (all) | 10,563 | OK |
-| Blocklist.de (mail) | 8,976 | OK |
-| Blocklist.de (apache) | 8,471 | OK |
+| Blocklist.de (all) | 10,568 | OK |
+| Blocklist.de (mail) | 8,979 | OK |
+| Blocklist.de (apache) | 8,467 | OK |
 | BinaryDefense | 3,952 | OK |
-| GreenSnow | 3,818 | OK |
+| GreenSnow | 3,800 | OK |
 | Spamhaus DROP | 1,590 | OK |
-| Tor Exit Nodes | 1,299 | OK |
-| Blocklist.de (ssh) | 792 | OK |
+| Tor Exit Nodes | 1,305 | OK |
+| Blocklist.de (ssh) | 799 | OK |
 | Emerging Threats | 387 | OK |
-| Blocklist.de (bruteforcelogin) | 355 | OK |
+| Blocklist.de (bruteforcelogin) | 351 | OK |
 | Blocklist.de (strongips) | 263 | OK |
-| Blocklist.de (bots) | 241 | OK |
-| AlienVault OTX | 143 | OK |
+| AlienVault OTX | 257 | OK |
+| Blocklist.de (bots) | 239 | OK |
 | Spamhaus DROPv6 | 96 | OK |
 | Feodo Tracker | 1 | OK |
 | USOM (Turkiye) | 0 | FAILED |

@@ -201,6 +201,16 @@ curl -s https://raw.githubusercontent.com/ziyadnz/threat-intel-ip-feeds/main/out
 ### Splunk / QRadar / Wazuh / ELK
 Import the raw URL as a **threat intelligence feed** (lookup table or CSV input).
 
+### STIX/TAXII Integration
+The aggregator produces a STIX 2.1 JSON bundle at `output/stix_bundle.json`. Import it into any STIX-compatible platform:
+```python
+import json
+with open("output/stix_bundle.json") as f:
+    bundle = json.load(f)
+print(f"{len(bundle['objects']) - 1} indicators loaded")
+# Each indicator includes: pattern, confidence score, source labels, category
+```
+
 ### Python
 ```python
 import requests
@@ -208,6 +218,16 @@ blocklist = requests.get(
     "https://raw.githubusercontent.com/ziyadnz/threat-intel-ip-feeds/main/output/hourlyIPv4.txt"
 ).text.strip().split("\n")
 print(f"{len(blocklist)} IPs loaded")
+```
+
+### CSV Analysis
+The CSV output at `output/blacklist.csv` includes per-IP metadata:
+```python
+import csv
+with open("output/blacklist.csv") as f:
+    reader = csv.DictReader(f)
+    multi_source = [r for r in reader if int(r["source_count"]) > 2]
+    print(f"{len(multi_source)} IPs flagged by 3+ sources")
 ```
 
 ---
@@ -243,7 +263,66 @@ print(f"{len(blocklist)} IPs loaded")
 | [`ipv4_blacklist.txt`](output/ipv4_blacklist.txt) | IPs + metadata header | Analysis / audit |
 | [`ipv6_blacklist.txt`](output/ipv6_blacklist.txt) | IPv6 addresses + CIDRs | IPv6-capable systems |
 | [`blacklist_full.json`](output/blacklist_full.json) | Full JSON dataset | API / programmatic use |
+| [`blacklist.csv`](output/blacklist.csv) | CSV with per-IP metadata | SIEM enrichment / analysis |
+| [`stix_bundle.json`](output/stix_bundle.json) | STIX 2.1 JSON bundle | Threat intel platforms |
 | [`health_report.md`](output/health_report.md) | Markdown report | Monitoring |
+
+### CSV Format
+
+```csv
+ip,type,is_cidr,sources,source_count,category,first_seen,last_seen
+1.2.3.4,ipv4,False,Blocklist.de (ssh)|Stamparm IPsum,2,brute-force,2026-04-14T12:00:00+00:00,2026-04-14T12:00:00+00:00
+5.6.0.0/16,ipv4,True,Spamhaus DROP,1,infrastructure,2026-04-14T12:00:00+00:00,2026-04-14T12:00:00+00:00
+```
+
+| Column | Description |
+|--------|------------|
+| `ip` | IP address or CIDR range |
+| `type` | `ipv4` or `ipv6` |
+| `is_cidr` | `True` if CIDR range, `False` if individual IP |
+| `sources` | Pipe-separated list of source names that reported this IP |
+| `source_count` | Number of independent sources (higher = more confident) |
+| `category` | Threat category derived from primary source |
+| `first_seen` / `last_seen` | Timestamps of observation |
+
+### STIX 2.1 Bundle
+
+Each IP becomes a STIX `indicator` object with:
+- **Pattern**: `[ipv4-addr:value = '1.2.3.4']` (STIX pattern syntax)
+- **Confidence**: 0-100, scaled by number of reporting sources (20 per source, capped at 100)
+- **Labels**: Threat category + source names
+- **Identity**: Aggregator system as the producer
+
+### Deduplication Report
+
+The health report (`output/health_report.md`) now includes source overlap analysis:
+- How many IPs are unique to a single source vs. found in multiple sources
+- Per-source contribution: unique IPs vs. overlapping IPs
+- Top source-pair overlaps (which sources share the most IPs)
+
+---
+
+## IP Whitelisting
+
+Prevent false positives by adding trusted IPs to `whitelist.txt`:
+
+```
+# CDN ranges — never block
+104.16.0.0/12       # Cloudflare
+8.8.8.8             # Google DNS
+1.1.1.0/24          # Cloudflare DNS
+
+# Our infrastructure
+203.0.113.10
+```
+
+**How it works:**
+- One IP or CIDR per line, comments start with `#`
+- Individual IPs are filtered by exact match or CIDR containment
+- CIDRs are filtered only if fully covered by a whitelisted range
+- Supports both IPv4 and IPv6
+- Whitelist stats appear in the health report and console summary
+- The whitelist is applied **before** IPs enter the output files
 
 ---
 
@@ -253,13 +332,16 @@ This isn't a script that breaks silently. Every failure is tracked, reported, an
 
 | Mechanism | What It Does |
 |-----------|-------------|
-| **Error Isolation** | Each source runs independently. One failure never affects the other 18+ |
-| **Auto Retry** | Failed requests retry 3x with exponential backoff (2s, 4s, 8s). Permanent 4xx errors skip retry |
+| **Async I/O** | All 21 sources fetched concurrently via `asyncio.gather` + `aiohttp` — single event loop, no thread pool |
+| **Error Isolation** | Each source runs as an independent coroutine. One failure never affects the other 18+ |
+| **Auto Retry** | Failed requests retry 3x with exponential backoff (2s, 4s, 8s) using `aiohttp`. Permanent 4xx errors skip retry |
 | **Rollback Protection** | If success rate drops below 20%, existing output files are preserved — not overwritten with bad data |
 | **Health Tracking** | `source_health.json` records every run: consecutive failures, last success, IP counts |
 | **Stale Detection** | Sources with no data for 30+ days are flagged |
 | **GitHub Issue Alerts** | Auto-creates issues on failure, auto-closes on recovery |
 | **Exit Codes** | `0` = OK, `1` = partial failure (output written), `2` = critical (output preserved) |
+| **IP Whitelisting** | Trusted IPs/CIDRs in `whitelist.txt` are never included in output |
+| **Dedup Metrics** | Source overlap analysis helps identify redundant or low-value sources |
 
 ---
 
@@ -269,20 +351,36 @@ This isn't a script that breaks silently. Every failure is tracked, reported, an
 git clone https://github.com/ziyadnz/threat-intel-ip-feeds.git
 cd threat-intel-ip-feeds
 pip install -r requirements.txt
-python main.py
+python run.py
 ```
+
+> **Requires Python 3.10+** (for `asyncio.run` and modern type hints).
 
 ### With API Keys (optional)
 ```bash
 export ABUSEIPDB_API_KEY="your_key"    # https://www.abuseipdb.com/register
 export OTX_API_KEY="your_key"          # https://otx.alienvault.com
-python main.py
+python run.py
 ```
 
 ### Automate with cron
 ```bash
-0 * * * * cd /path/to/threat-intel-ip-feeds && python main.py >> /var/log/threat-intel.log 2>&1
+0 * * * * cd /path/to/threat-intel-ip-feeds && python run.py >> /var/log/threat-intel.log 2>&1
 ```
+
+### Running Tests
+```bash
+pip install -r requirements.txt
+python -m pytest tests/unit/ -v
+```
+
+The test suite (80 tests, 0.2s) covers:
+- Domain entities, value objects, and services (pure logic, zero I/O)
+- Use case orchestration with stub ports (async)
+- aiohttp client retry logic with mocked HTTP
+- Source parsing with async fake HTTP client
+- CSV, STIX, raw, JSON output format correctness
+- Rollback protection and health tracking
 
 ---
 
@@ -290,19 +388,25 @@ python main.py
 
 ```mermaid
 flowchart TD
-    A[Start - Every Hour] --> B[Load 19+ Sources in Parallel]
-    B --> C{HTTP Request}
-    C -->|Success| D[Extract & Validate IPs]
-    C -->|Fail| E{Retry < 3?}
-    E -->|Yes| F[Backoff 2s/4s/8s] --> C
-    E -->|No| G[Record Failure]
-    D --> H[Record Success]
-    G --> J[Classify IPv4 / IPv6]
-    H --> J
+    A[Start - Every Hour] --> B[Load Whitelist + Health State]
+    B --> C[Launch 21 async coroutines via asyncio.gather]
+    C --> D{aiohttp Request}
+    D -->|Success| E[Extract & Validate IPs]
+    D -->|Fail| F{Retry < 3?}
+    F -->|Yes| G[Async backoff 2s/4s/8s] --> D
+    F -->|No| H[Record Failure]
+    E --> I[Record Success]
+    H --> WF[Apply Whitelist Filter]
+    I --> WF
+    WF --> J[Classify IPv4 / IPv6 + Track Source Attribution]
     J --> K{Success Rate >= 20%?}
     K -->|Yes| L[Write Output Files]
     K -->|No| M[Rollback: Keep Existing Files]
-    L --> N[Health Report]
+    L --> L1[hourlyIPv4.txt]
+    L --> L2[blacklist.csv]
+    L --> L3[stix_bundle.json]
+    L --> L4[blacklist_full.json]
+    L1 & L2 & L3 & L4 --> N[Health Report + Dedup Metrics]
     M --> N
     N --> O{Issues Detected?}
     O -->|Yes| P[Open GitHub Issue]
@@ -320,9 +424,10 @@ graph LR
     end
 
     subgraph Core
-        CO[collector.py<br/>Parallel Engine]
-        UT[utils.py<br/>HTTP + Retry]
-        CF[config.py<br/>Settings]
+        CO[CollectThreatIntelUseCase<br/>asyncio.gather Concurrency<br/>+ Source Attribution]
+        UT[AiohttpClient<br/>Async HTTP + Retry]
+        CF[AppConfig<br/>Env-based Settings]
+        WL[WhitelistFilter<br/>Domain Service]
     end
 
     subgraph Output
@@ -330,20 +435,27 @@ graph LR
         IPv4[ipv4_blacklist.txt]
         IPv6[ipv6_blacklist.txt]
         JSON[blacklist_full.json]
+        CSV[blacklist.csv<br/>Per-IP Metadata]
+        STIX[stix_bundle.json<br/>STIX 2.1 Bundle]
     end
 
     subgraph Health
         HT[health_tracker.py<br/>Persistent State]
-        HR[health_report.py<br/>Markdown Report]
+        HR[health_report.py<br/>Markdown Report<br/>+ Dedup Metrics]
         NO[notifier.py<br/>GitHub Issues]
+    end
+
+    subgraph Tests
+        TS2[tests/unit/<br/>80 async tests<br/>Mocked aiohttp]
     end
 
     MAIN[main.py<br/>Orchestrator] --> CO
     CO --> GS & TS & AS
     GS & TS & AS --> UT
     UT --> CF
+    CO --> WL
     CO --> OW
-    OW --> IPv4 & IPv6 & JSON
+    OW --> IPv4 & IPv6 & JSON & CSV & STIX
     CO --> HT
     HT --> HR
     HR --> NO

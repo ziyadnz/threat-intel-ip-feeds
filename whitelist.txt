@@ -1,0 +1,29 @@
+# ============================================================
+# IP Whitelist - IPs and CIDRs that should NEVER be blocked
+# ============================================================
+# Format: one IP or CIDR per line. Comments start with #.
+# Blank lines are ignored.
+#
+# Examples:
+#   8.8.8.8             # Google Public DNS
+#   1.1.1.0/24          # Cloudflare DNS range
+#   2606:4700::/32      # Cloudflare IPv6
+#
+# Use this file to protect:
+#   - Your own infrastructure IPs
+#   - CDN/cloud provider ranges (Cloudflare, Akamai, Fastly)
+#   - DNS resolvers you rely on
+#   - Business partner / vendor IPs
+#   - Any known false positives
+# ============================================================
+
+# --- Public DNS Resolvers ---
+# 8.8.8.8               # Google DNS
+# 8.8.4.4               # Google DNS
+# 1.1.1.1               # Cloudflare DNS
+# 1.0.0.1               # Cloudflare DNS
+# 9.9.9.9               # Quad9 DNS
+# 208.67.222.222        # OpenDNS
+
+# --- Your Infrastructure ---
+# Add your own IPs/CIDRs below:

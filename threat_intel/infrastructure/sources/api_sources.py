@@ -130,7 +130,7 @@ class AlienVaultOTXSource(ThreatSource):
         api_key: str,
         cache_dir: str,
         max_pages: int = 20,
-        rate_limit_delay: float = 1.5,
+        rate_limit_delay: float = 3.0,
     ):
         self._http = http
         self._api_key = api_key
@@ -176,6 +176,7 @@ class AlienVaultOTXSource(ThreatSource):
                         f"failures, stopping pagination"
                     )
                     break
+                await asyncio.sleep(self._rate_delay * consecutive_failures * 2)
                 page += 1
                 continue
 

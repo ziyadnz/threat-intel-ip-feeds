@@ -159,6 +159,7 @@ class AlienVaultOTXSource(ThreatSource):
         page = 1
         consecutive_failures = 0
         max_consecutive_failures = 3
+        failed_pages = []
 
         while page <= self._max_pages:
             url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={page}"
@@ -167,6 +168,7 @@ class AlienVaultOTXSource(ThreatSource):
                 consecutive_failures = 0
             except Exception as e:
                 consecutive_failures += 1
+                failed_pages.append(page)
                 logger.warning(
                     f"[{self.name}] Page {page} failed ({e}), skipping"
                 )
@@ -197,6 +199,34 @@ class AlienVaultOTXSource(ThreatSource):
                 break
             page += 1
             await asyncio.sleep(self._rate_delay)
+
+        # Retry failed pages once after a cooldown
+        if failed_pages:
+            logger.info(
+                f"[{self.name}] Retrying {len(failed_pages)} failed pages "
+                f"after cooldown: {failed_pages}"
+            )
+            await asyncio.sleep(self._rate_delay * 3)
+            for rpage in failed_pages:
+                url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={rpage}"
+                try:
+                    data = await self._http.get_json(
+                        url, headers=headers, timeout=90
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"[{self.name}] Retry page {rpage} failed again ({e})"
+                    )
+                    continue
+                for pulse in data.get("results", []):
+                    for indicator in pulse.get("indicators", []):
+                        if indicator.get("type") in ("IPv4", "IPv6"):
+                            ip = IPValidator.parse_and_validate(
+                                indicator.get("indicator", "")
+                            )
+                            if ip:
+                                result.add(ip)
+                await asyncio.sleep(self._rate_delay)
 
         # Cache strategy: got data -> save it; got nothing -> load previous
         if result:

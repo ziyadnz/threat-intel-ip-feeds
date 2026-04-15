@@ -7,6 +7,7 @@ URLs are imported from urls.py — the single source of truth for endpoints.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -129,11 +130,13 @@ class AlienVaultOTXSource(ThreatSource):
         api_key: str,
         cache_dir: str,
         max_pages: int = 20,
+        rate_limit_delay: float = 1.5,
     ):
         self._http = http
         self._api_key = api_key
         self._cache_path = os.path.join(cache_dir, "otx_cache.json")
         self._max_pages = max_pages
+        self._rate_delay = rate_limit_delay
 
     @property
     def name(self) -> str:
@@ -192,6 +195,7 @@ class AlienVaultOTXSource(ThreatSource):
             if not data.get("next"):
                 break
             page += 1
+            await asyncio.sleep(self._rate_delay)
 
         # Cache strategy: got data -> save it; got nothing -> load previous
         if result:

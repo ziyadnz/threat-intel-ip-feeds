@@ -1,92 +1,92 @@
 {
   "Spamhaus DROPv6": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 96,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Spamhaus DROP": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 1590,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (ssh)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 773,
+    "last_ip_count": 725,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (apache)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 8474,
+    "last_ip_count": 8461,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Feodo Tracker": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 1,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (mail)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 8976,
+    "last_ip_count": 8999,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (bots)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 245,
+    "last_ip_count": 238,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (bruteforcelogin)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 364,
+    "last_ip_count": 352,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (strongips)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 262,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Blocklist.de (all)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 10544,
+    "last_ip_count": 10503,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "AbuseIPDB": {
@@ -95,97 +95,97 @@
     "last_failure_reason": null,
     "last_ip_count": 0,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "AlienVault OTX": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 257,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Tor Exit Nodes": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 1304,
+    "last_ip_count": 1303,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "GreenSnow": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 4348,
+    "last_ip_count": 4340,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Emerging Threats": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 387,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "Stamparm IPsum": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 32673,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "BinaryDefense": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 4181,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "RTBH (Turkiye)": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 36706,
+    "last_ip_count": 36959,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "CINS Army": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
     "last_ip_count": 15000,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "DShield": {
-    "last_success": "2026-04-15T01:17:03.112955+00:00",
+    "last_success": "2026-04-15T04:35:57.584312+00:00",
     "last_failure": null,
     "last_failure_reason": null,
-    "last_ip_count": 33475,
+    "last_ip_count": 94267,
     "consecutive_failures": 0,
-    "total_runs": 7,
+    "total_runs": 8,
     "total_failures": 0
   },
   "USOM (Turkiye)": {
     "last_success": "2026-04-04T16:23:57.667925+00:00",
-    "last_failure": "2026-04-15T01:17:03.112955+00:00",
+    "last_failure": "2026-04-15T04:35:57.584312+00:00",
     "last_failure_reason": "ClientResponseError: 429, message='<html>\\r\\n<head><title>429 Too Many Requests</title></head>\\r\\n<body>\\r\\n<center><h1>429 Too Many Requests</h1></center>\\r\\n<hr><center>nginx</center>\\r\\n</body>\\r\\n</html>\\r\\n', url='https://www.usom.gov.tr/api/address/index?type=ip&page=135'",
     "last_ip_count": 2780,
-    "consecutive_failures": 4,
-    "total_runs": 7,
-    "total_failures": 4
+    "consecutive_failures": 5,
+    "total_runs": 8,
+    "total_failures": 5
   }
 }

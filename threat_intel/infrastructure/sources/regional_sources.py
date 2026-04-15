@@ -16,7 +16,7 @@ class UsomSource(ThreatSource):
     """USOM (Turkey) — government-published malicious IPs via paginated API."""
 
     def __init__(self, http: HttpClient, max_ips: int = 10000,
-                 rate_limit_delay: float = 0.5):
+                 rate_limit_delay: float = 2.0):
         self._http = http
         self._max_ips = max_ips
         self._rate_delay = rate_limit_delay

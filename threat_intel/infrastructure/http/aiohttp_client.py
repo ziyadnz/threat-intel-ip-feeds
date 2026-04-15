@@ -75,7 +75,23 @@ class AiohttpClient(HttpClient):
                 )
                 if resp.status >= 400:
                     body = await resp.text()
-                    # Permanent 4xx — don't retry (includes 429 rate limit)
+                    # 429 Too Many Requests — retry with backoff
+                    if resp.status == 429:
+                        retry_after = resp.headers.get("Retry-After")
+                        wait = (
+                            float(retry_after)
+                            if retry_after and retry_after.isdigit()
+                            else self._backoff_base ** (attempt + 1)
+                        )
+                        logger.warning(
+                            f"[{url}] Rate limited (429), "
+                            f"retrying in {wait}s"
+                        )
+                        raise aiohttp.ClientResponseError(
+                            resp.request_info, resp.history,
+                            status=resp.status, message=body,
+                        )
+                    # Other 4xx — permanent, don't retry
                     if 400 <= resp.status < 500:
                         logger.error(
                             f"[{url}] Client error ({resp.status}), no retry"
@@ -93,9 +109,9 @@ class AiohttpClient(HttpClient):
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
 
-                # All 4xx errors are permanent — don't retry
+                # 4xx errors are permanent — don't retry (except 429)
                 if isinstance(e, aiohttp.ClientResponseError):
-                    if 400 <= e.status < 500:
+                    if 400 <= e.status < 500 and e.status != 429:
                         raise
 
                 if attempt < self._max_retries - 1:

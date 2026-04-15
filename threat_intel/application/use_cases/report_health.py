@@ -102,14 +102,18 @@ class ReportHealthUseCase:
                 lines.append(f"| {hit.ip.raw} | {sources_str} |")
             lines.append("")
 
+        cached = [sr for sr in result.source_results if sr.from_cache]
         if failures:
             lines += [
                 "## Failed Sources This Run", "",
-                "| Source | Error |",
-                "|--------|------|",
+                "| Source | Error | Cached |",
+                "|--------|------|--------|",
             ]
             for sr in failures:
-                lines.append(f"| {sr.source_name} | {(sr.error or '')[:200]} |")
+                cache_status = f"{sr.ip_count:,} IPs from cache" if sr.from_cache else "No cache"
+                lines.append(
+                    f"| {sr.source_name} | {(sr.error or '')[:200]} | {cache_status} |"
+                )
             lines.append("")
 
         # Overlap metrics
@@ -184,7 +188,9 @@ class ReportHealthUseCase:
         ]
         failed_names = {sr.source_name for sr in failures}
         for sr in sorted(result.source_results, key=lambda s: -s.ip_count):
-            if sr.source_name in failed_names:
+            if sr.from_cache:
+                status = "CACHED"
+            elif sr.source_name in failed_names:
                 status = "FAILED"
             elif sr.ip_count > 0:
                 status = "OK"

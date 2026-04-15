@@ -21,6 +21,7 @@ from threat_intel.domain.ports import (
 from threat_intel.application.use_cases.collect_threat_intel import (
     CollectThreatIntelUseCase,
 )
+from threat_intel.infrastructure.cache.source_cache import SourceCacheRepository
 
 
 class StubSource:
@@ -68,6 +69,11 @@ class StubHealthRepo(HealthRepository):
 
 
 class TestCollectThreatIntelUseCase:
+
+    @pytest.fixture(autouse=True)
+    def _cache(self, tmp_path):
+        self.source_cache = SourceCacheRepository(str(tmp_path / "cache"))
+
     @pytest.mark.asyncio
     async def test_collects_from_all_sources(self):
         # Arrange
@@ -77,6 +83,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src1, src2],
             whitelist_repo=StubWhitelistRepo(),
             health_repo=StubHealthRepo(),
+            source_cache=self.source_cache,
         )
 
         # Act
@@ -96,6 +103,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src_ok, src_fail],
             whitelist_repo=StubWhitelistRepo(),
             health_repo=StubHealthRepo(),
+            source_cache=self.source_cache,
         )
 
         # Act
@@ -118,6 +126,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src],
             whitelist_repo=wl,
             health_repo=StubHealthRepo(),
+            source_cache=self.source_cache,
         )
 
         # Act
@@ -138,6 +147,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src1, src2],
             whitelist_repo=StubWhitelistRepo(),
             health_repo=StubHealthRepo(),
+            source_cache=self.source_cache,
         )
 
         # Act
@@ -158,6 +168,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src],
             whitelist_repo=StubWhitelistRepo(),
             health_repo=health_repo,
+            source_cache=self.source_cache,
         )
 
         # Act
@@ -179,6 +190,7 @@ class TestCollectThreatIntelUseCase:
             sources=[src1, src2],
             whitelist_repo=StubWhitelistRepo(),
             health_repo=StubHealthRepo(),
+            source_cache=self.source_cache,
         )
 
         # Act

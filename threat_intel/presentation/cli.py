@@ -45,6 +45,7 @@ from threat_intel.infrastructure.writers.raw_writer import (
 from threat_intel.infrastructure.writers.csv_writer import CSVWriter
 from threat_intel.infrastructure.writers.stix_writer import STIXBundleWriter
 from threat_intel.infrastructure.writers.json_writer import FullJSONWriter
+from threat_intel.infrastructure.cache.source_cache import SourceCacheRepository
 from threat_intel.infrastructure.health.json_repository import JsonHealthRepository
 from threat_intel.infrastructure.health.markdown_report_writer import (
     MarkdownReportWriter,
@@ -162,17 +163,24 @@ def _print_summary(result: CollectionResult):
     print(f"  SOURCES:")
     print(f"  {'—' * 56}")
     failed_names = {sr.source_name for sr in result.failed_sources}
+    cached_names = {sr.source_name for sr in result.source_results if sr.from_cache}
     for sr in sorted(result.source_results, key=lambda s: -s.ip_count):
-        if sr.source_name in failed_names:
+        if sr.source_name in cached_names:
+            mark = "C"
+            suffix = " [CACHED]"
+        elif sr.source_name in failed_names:
             mark = "X"
+            suffix = ""
         elif sr.ip_count > 0:
             mark = "+"
+            suffix = ""
         else:
             mark = "?"
+            suffix = ""
         u = o.per_source_unique.get(sr.source_name, "")
         s = o.per_source_shared.get(sr.source_name, "")
         extra = f"  (uniq:{u} ovlp:{s})" if u != "" else ""
-        print(f"  {mark} {sr.source_name:<40} {sr.ip_count:>8,}{extra}")
+        print(f"  {mark} {sr.source_name:<40} {sr.ip_count:>8,}{extra}{suffix}")
 
     if result.whitelist_hits:
         print(f"{'=' * 60}")
@@ -227,6 +235,9 @@ async def _async_main():
         writers = _build_writers()
         health_repo = JsonHealthRepository(config.health_file)
         whitelist_repo = FileWhitelistRepository(config.whitelist_file)
+        source_cache = SourceCacheRepository(
+            os.path.join(config.output_dir, "source_cache")
+        )
         notifier = GitHubIssueNotifier()
         report_writer = MarkdownReportWriter()
 
@@ -237,6 +248,7 @@ async def _async_main():
             sources=sources,
             whitelist_repo=whitelist_repo,
             health_repo=health_repo,
+            source_cache=source_cache,
         )
         result = await collect_uc.execute()
 

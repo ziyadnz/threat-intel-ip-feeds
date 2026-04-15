@@ -29,8 +29,12 @@ from threat_intel.domain.services import (
     OverlapAnalyzer,
     WhitelistFilter,
 )
+from threat_intel.infrastructure.cache.source_cache import SourceCacheRepository
 
 logger = logging.getLogger(__name__)
+
+# Sources that manage their own cache (skip general cache for these)
+_SELF_CACHED_SOURCES = frozenset({"AbuseIPDB", "AlienVault OTX"})
 
 
 class CollectThreatIntelUseCase:
@@ -41,11 +45,13 @@ class CollectThreatIntelUseCase:
         sources: List[ThreatSource],
         whitelist_repo: WhitelistRepository,
         health_repo: HealthRepository,
+        source_cache: SourceCacheRepository,
         max_concurrency: int = 5,
     ):
         self._sources = sources
         self._whitelist_repo = whitelist_repo
         self._health_repo = health_repo
+        self._source_cache = source_cache
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
     async def execute(self) -> CollectionResult:
@@ -133,12 +139,21 @@ class CollectThreatIntelUseCase:
         async with self._semaphore:
             return await self._safe_fetch(source)
 
-    @staticmethod
-    async def _safe_fetch(source: ThreatSource) -> SourceResult:
-        """Run a single source fetch, catching all exceptions."""
+    async def _safe_fetch(self, source: ThreatSource) -> SourceResult:
+        """Run a single source fetch, catching all exceptions.
+
+        On success: caches IPs for future fallback.
+        On failure: serves last cached IPs (if any) and preserves the error.
+        """
+        skip_cache = source.name in _SELF_CACHED_SOURCES
+
         try:
             ips = await source.fetch()
             logger.info(f"[{source.name}] {len(ips)} IPs")
+
+            if not skip_cache and ips:
+                self._source_cache.save(source.name, ips)
+
             return SourceResult(
                 source_name=source.name,
                 ips=frozenset(ips),
@@ -146,10 +161,20 @@ class CollectThreatIntelUseCase:
         except Exception as e:
             error_msg = f"{type(e).__name__}: {e}"
             logger.error(f"[{source.name}] {error_msg}")
+
+            cached_ips: Set[IPAddress] = set()
+            if not skip_cache:
+                cached_ips = self._source_cache.load(source.name)
+                if cached_ips:
+                    logger.info(
+                        f"[{source.name}] Serving {len(cached_ips)} IPs from cache"
+                    )
+
             return SourceResult(
                 source_name=source.name,
-                ips=frozenset(),
+                ips=frozenset(cached_ips),
                 error=error_msg,
+                from_cache=bool(cached_ips),
             )
 
     def _update_health(self, results: List[SourceResult], now: datetime):

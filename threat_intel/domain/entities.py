@@ -182,6 +182,7 @@ class SourceResult:
     source_name: str
     ips: FrozenSet[IPAddress]
     error: Optional[str] = None
+    from_cache: bool = False
 
     @property
     def is_success(self) -> bool:

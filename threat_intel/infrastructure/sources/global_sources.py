@@ -87,9 +87,9 @@ class DShieldSource:
     def category(self) -> str:
         return "scanner"
 
-    async def fetch(self) -> Set[IPAddress]:
+    def fetch(self) -> Set[IPAddress]:
         headers = {"User-Agent": "IP-Blacklist-Aggregator/5.0"}
-        data = await self._http.get_json(DSHIELD_INTELFEED, headers=headers)
+        data = self._http.get_json(DSHIELD_INTELFEED, headers=headers)
         result = set()
         if isinstance(data, list):
             for entry in data:
@@ -164,8 +164,8 @@ class StamparmIpsumSource:
     def category(self) -> str:
         return "multi-source"
 
-    async def fetch(self) -> Set[IPAddress]:
-        text = await self._http.get(STAMPARM_IPSUM, timeout=120)
+    def fetch(self) -> Set[IPAddress]:
+        text = self._http.get(STAMPARM_IPSUM, timeout=120)
         result = set()
         for line in text.splitlines():
             line = line.strip()

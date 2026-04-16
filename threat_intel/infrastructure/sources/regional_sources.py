@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import time
 from typing import Set
 
 from threat_intel.domain.entities import IPAddress
@@ -29,13 +29,13 @@ class UsomSource(ThreatSource):
     def category(self) -> str:
         return "government-feed"
 
-    async def fetch(self) -> Set[IPAddress]:
+    def fetch(self) -> Set[IPAddress]:
         result = set()
         page = 1
 
         while len(result) < self._max_ips:
             url = f"{USOM_API}?type=ip&page={page}"
-            data = await self._http.get_json(url, headers={"accept": "application/json"})
+            data = self._http.get_json(url, headers={"accept": "application/json"})
 
             models = data.get("models", [])
             if not models:
@@ -54,7 +54,7 @@ class UsomSource(ThreatSource):
             if page * page_size >= total_count:
                 break
             page += 1
-            await asyncio.sleep(self._rate_delay)
+            time.sleep(self._rate_delay)
 
         return result
 

@@ -7,7 +7,6 @@ No business logic lives in this file.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import sys
@@ -15,7 +14,7 @@ import sys
 from threat_intel.domain.entities import CollectionResult
 
 # Infrastructure — concrete implementations
-from threat_intel.infrastructure.http.aiohttp_client import AiohttpClient
+from threat_intel.infrastructure.http.requests_client import RequestsClient
 from threat_intel.infrastructure.sources.global_sources import (
     BinaryDefenseSource,
     BlocklistDeSource,
@@ -92,8 +91,8 @@ class AppConfig:
         self.ipsum_min_score = int(os.environ.get("IPSUM_MIN_SCORE", "2"))
 
 
-def _build_sources(http: AiohttpClient, config: AppConfig) -> list:
-    """Build all threat source instances with injected async HTTP client."""
+def _build_sources(http: RequestsClient, config: AppConfig) -> list:
+    """Build all threat source instances with injected HTTP client."""
     return [
         SpamhausDropSource(http),
         SpamhausDropV6Source(http),
@@ -201,8 +200,8 @@ def _print_summary(result: CollectionResult):
     print(f"{'=' * 60}\n")
 
 
-async def _async_main():
-    """Async application entry point — composition root."""
+def _main():
+    """Application entry point — composition root."""
     config = AppConfig()
 
     # Logging setup (presentation concern)
@@ -217,17 +216,16 @@ async def _async_main():
 
     print(r"""
     +======================================================+
-    |       IP BLACKLIST AGGREGATOR v5.0                    |
-    |       Clean Architecture + Async I/O                  |
-    |  21 sources | aiohttp | STIX | CSV | Dedup Metrics   |
+    |       IP BLACKLIST AGGREGATOR v6.0                    |
+    |       Clean Architecture + Thread Parallelism         |
+    |  21 sources | requests | STIX | CSV | Dedup Metrics   |
     +======================================================+
     """)
 
     # -- Wire dependencies (composition root) --
-    http = AiohttpClient(
+    http = RequestsClient(
         default_timeout=config.request_timeout,
         max_retries=config.max_retries,
-        connector_limit=config.connector_limit,
     )
 
     try:
@@ -243,16 +241,16 @@ async def _async_main():
 
         # -- Execute use cases --
 
-        # 1. Collect (async)
+        # 1. Collect (parallel via threads)
         collect_uc = CollectThreatIntelUseCase(
             sources=sources,
             whitelist_repo=whitelist_repo,
             health_repo=health_repo,
             source_cache=source_cache,
         )
-        result = await collect_uc.execute()
+        result = collect_uc.execute()
 
-        # 2. Write outputs (sync — disk I/O is fast)
+        # 2. Write outputs
         write_uc = WriteOutputsUseCase(
             writers=writers,
             output_dir=config.output_dir,
@@ -286,9 +284,9 @@ async def _async_main():
         logger.info("All operations completed successfully.")
 
     finally:
-        await http.close()
+        http.close()
 
 
 def run():
-    """Synchronous entry point — launches the async main."""
-    asyncio.run(_async_main())
+    """Entry point."""
+    _main()

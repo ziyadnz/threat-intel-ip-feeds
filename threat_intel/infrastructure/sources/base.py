@@ -37,8 +37,8 @@ class TextListSource(ThreatSource):
     def category(self) -> str:
         return self._category
 
-    async def fetch(self) -> Set[IPAddress]:
-        text = await self._http.get(self._url)
+    def fetch(self) -> Set[IPAddress]:
+        text = self._http.get(self._url)
         return self._parse(text)
 
     def _parse(self, text: str) -> Set[IPAddress]:

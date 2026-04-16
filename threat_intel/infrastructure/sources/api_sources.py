@@ -7,10 +7,11 @@ URLs are imported from urls.py — the single source of truth for endpoints.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Set
 
@@ -50,7 +51,7 @@ class AbuseIPDBSource(ThreatSource):
     def category(self) -> str:
         return "crowd-sourced"
 
-    async def fetch(self) -> Set[IPAddress]:
+    def fetch(self) -> Set[IPAddress]:
         if not self._api_key:
             logger.warning(f"[{self.name}] No API key, skipping.")
             return set()
@@ -70,7 +71,7 @@ class AbuseIPDBSource(ThreatSource):
         )
 
         try:
-            data = await self._http.get_json(url, headers=headers)
+            data = self._http.get_json(url, headers=headers)
         except Exception as e:
             logger.warning(f"[{self.name}] API failed ({e}), falling back to cache")
             return self._load_cache()
@@ -117,11 +118,8 @@ class AbuseIPDBSource(ThreatSource):
 class AlienVaultOTXSource(ThreatSource):
     """AlienVault OTX — community threat intel pulses with pagination.
 
-    Strategy:
-    1. Try fetching all pages from the API
-    2. If API succeeds -> save to cache, return fresh data
-    3. If API fails entirely -> fall back to last successful cache
-    4. If API partially succeeds -> return what we got (still better than stale cache)
+    Pages are fetched in parallel via ThreadPoolExecutor (bounded).
+    Failed pages are retried once after all pages complete.
     """
 
     def __init__(
@@ -130,13 +128,13 @@ class AlienVaultOTXSource(ThreatSource):
         api_key: str,
         cache_dir: str,
         max_pages: int = 20,
-        rate_limit_delay: float = 3.0,
+        page_concurrency: int = 3,
     ):
         self._http = http
         self._api_key = api_key
         self._cache_path = os.path.join(cache_dir, "otx_cache.json")
         self._max_pages = max_pages
-        self._rate_delay = rate_limit_delay
+        self._page_concurrency = page_concurrency
 
     @property
     def name(self) -> str:
@@ -146,7 +144,7 @@ class AlienVaultOTXSource(ThreatSource):
     def category(self) -> str:
         return "threat-intel"
 
-    async def fetch(self) -> Set[IPAddress]:
+    def fetch(self) -> Set[IPAddress]:
         if not self._api_key:
             logger.warning(f"[{self.name}] No API key, skipping.")
             return set()
@@ -155,80 +153,44 @@ class AlienVaultOTXSource(ThreatSource):
             "X-OTX-API-KEY": self._api_key,
             "User-Agent": "IP-Blacklist-Aggregator/5.0",
         }
+
         result = set()
-        page = 1
-        consecutive_failures = 0
-        max_consecutive_failures = 3
         failed_pages = []
 
-        while page <= self._max_pages:
-            url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={page}"
-            try:
-                data = await self._http.get_json(url, headers=headers, timeout=90)
-                consecutive_failures = 0
-            except Exception as e:
-                consecutive_failures += 1
-                failed_pages.append(page)
-                logger.warning(
-                    f"[{self.name}] Page {page} failed ({e}), skipping"
-                )
-                if consecutive_failures >= max_consecutive_failures:
-                    logger.warning(
-                        f"[{self.name}] {max_consecutive_failures} consecutive "
-                        f"failures, stopping pagination"
-                    )
-                    break
-                await asyncio.sleep(self._rate_delay * consecutive_failures * 2)
-                page += 1
-                continue
+        # Fetch pages in parallel (bounded by page_concurrency)
+        with ThreadPoolExecutor(max_workers=self._page_concurrency) as pool:
+            futures = {
+                pool.submit(self._fetch_page, page, headers): page
+                for page in range(1, self._max_pages + 1)
+            }
+            for future in as_completed(futures):
+                page = futures[future]
+                ips, ok = future.result()
+                if ok:
+                    result.update(ips)
+                elif ips is None:
+                    failed_pages.append(page)
 
-            pulses = data.get("results", [])
-            if not pulses:
-                break
-
-            for pulse in pulses:
-                for indicator in pulse.get("indicators", []):
-                    if indicator.get("type") in ("IPv4", "IPv6"):
-                        ip = IPValidator.parse_and_validate(
-                            indicator.get("indicator", "")
-                        )
-                        if ip:
-                            result.add(ip)
-
-            if not data.get("next"):
-                break
-            page += 1
-            await asyncio.sleep(self._rate_delay)
-
-        # Retry failed pages once after a cooldown
+        # Retry failed pages once
         if failed_pages:
             logger.info(
-                f"[{self.name}] Retrying {len(failed_pages)} failed pages "
-                f"after cooldown: {failed_pages}"
+                f"[{self.name}] Retrying {len(failed_pages)} failed pages: "
+                f"{failed_pages}"
             )
-            await asyncio.sleep(self._rate_delay * 3)
-            for rpage in failed_pages:
-                url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={rpage}"
-                try:
-                    data = await self._http.get_json(
-                        url, headers=headers, timeout=90
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"[{self.name}] Retry page {rpage} failed again ({e})"
-                    )
-                    continue
-                for pulse in data.get("results", []):
-                    for indicator in pulse.get("indicators", []):
-                        if indicator.get("type") in ("IPv4", "IPv6"):
-                            ip = IPValidator.parse_and_validate(
-                                indicator.get("indicator", "")
-                            )
-                            if ip:
-                                result.add(ip)
-                await asyncio.sleep(self._rate_delay)
+            time.sleep(2)
+            with ThreadPoolExecutor(max_workers=self._page_concurrency) as pool:
+                futures = {
+                    pool.submit(self._fetch_page, p, headers): p
+                    for p in failed_pages
+                }
+                for future in as_completed(futures):
+                    page = futures[future]
+                    ips, ok = future.result()
+                    if ok:
+                        result.update(ips)
+                    else:
+                        logger.warning(f"[{self.name}] Page {page} failed twice")
 
-        # Cache strategy: got data -> save it; got nothing -> load previous
         if result:
             self._save_cache(result)
             logger.info(f"[{self.name}] {len(result)} IPs (cache updated)")
@@ -236,6 +198,31 @@ class AlienVaultOTXSource(ThreatSource):
             result = self._load_cache()
 
         return result
+
+    def _fetch_page(self, page: int, headers: dict) -> tuple:
+        """Fetch a single page. Returns (ips, True) on success,
+        (None, False) on failure, (set(), True) if empty/end."""
+        url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={page}"
+        try:
+            data = self._http.get_json(url, headers=headers, timeout=90)
+        except Exception as e:
+            logger.warning(f"[{self.name}] Page {page} failed: {e}")
+            return (None, False)
+
+        pulses = data.get("results", [])
+        if not pulses:
+            return (set(), True)
+
+        ips = set()
+        for pulse in pulses:
+            for indicator in pulse.get("indicators", []):
+                if indicator.get("type") in ("IPv4", "IPv6"):
+                    ip = IPValidator.parse_and_validate(
+                        indicator.get("indicator", "")
+                    )
+                    if ip:
+                        ips.add(ip)
+        return (ips, True)
 
     def _save_cache(self, ips: Set[IPAddress]):
         try:

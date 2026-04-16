@@ -3,10 +3,6 @@
 These abstract base classes define what the domain NEEDS from the outside world.
 Infrastructure adapters implement them. The dependency arrow always points inward:
 infrastructure depends on domain, never the reverse.
-
-Note: async/await is Python language syntax (PEP 492), not a framework import.
-Using it in domain ports is analogous to using typing or abc — it describes
-the *contract shape*, not an implementation detail.
 """
 
 from __future__ import annotations
@@ -36,7 +32,7 @@ class ThreatSource(ABC):
         return "unknown"
 
     @abstractmethod
-    async def fetch(self) -> Set[IPAddress]:
+    def fetch(self) -> Set[IPAddress]:
         """Fetch and return validated IPs. Raises on unrecoverable failure."""
 
 
@@ -44,16 +40,16 @@ class HttpClient(ABC):
     """Port: performs HTTP requests with retry semantics."""
 
     @abstractmethod
-    async def get(self, url: str, headers: Optional[Dict] = None,
-                  timeout: int = 60) -> str:
+    def get(self, url: str, headers: Optional[Dict] = None,
+            timeout: int = 60) -> str:
         """GET request, return response body text. Raises on failure."""
 
     @abstractmethod
-    async def get_json(self, url: str, headers: Optional[Dict] = None,
-                       timeout: int = 60) -> object:
+    def get_json(self, url: str, headers: Optional[Dict] = None,
+                 timeout: int = 60) -> object:
         """GET request, return parsed JSON. Raises on failure."""
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Release underlying resources (connection pool, session)."""
 
 

@@ -1,14 +1,14 @@
 """Use case: Collect threat intelligence from all configured sources.
 
-Orchestrates concurrent source fetching via asyncio.gather, whitelist filtering,
-dedup analysis, and health tracking. Depends only on domain ports and services.
+Orchestrates parallel source fetching via ThreadPoolExecutor, whitelist
+filtering, dedup analysis, and health tracking.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Dict, FrozenSet, List, Set
 
@@ -46,15 +46,15 @@ class CollectThreatIntelUseCase:
         whitelist_repo: WhitelistRepository,
         health_repo: HealthRepository,
         source_cache: SourceCacheRepository,
-        max_concurrency: int = 5,
+        max_workers: int = 10,
     ):
         self._sources = sources
         self._whitelist_repo = whitelist_repo
         self._health_repo = health_repo
         self._source_cache = source_cache
-        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._max_workers = max_workers
 
-    async def execute(self) -> CollectionResult:
+    def execute(self) -> CollectionResult:
         start = datetime.now(timezone.utc)
 
         whitelist_entries = self._whitelist_repo.load()
@@ -62,10 +62,10 @@ class CollectThreatIntelUseCase:
         if wl_filter.entry_count > 0:
             logger.info(f"Whitelist loaded: {wl_filter.entry_count} entries")
 
-        logger.info(f"Scanning {len(self._sources)} sources concurrently...")
+        logger.info(f"Scanning {len(self._sources)} sources in parallel...")
 
-        # Concurrent fetch — each source is isolated via its own coroutine
-        source_results = await self._fetch_all_concurrent()
+        # Parallel fetch — each source runs in its own thread
+        source_results = self._fetch_all_parallel()
 
         # Update health records
         self._update_health(source_results, start)
@@ -77,7 +77,7 @@ class CollectThreatIntelUseCase:
         wl_ip_objects: Dict[str, IPAddress] = {}
 
         for result in source_results:
-            if not result.is_success:
+            if not result.is_success and not result.from_cache:
                 continue
             for ip in result.ips:
                 if wl_filter.is_whitelisted(ip):
@@ -121,25 +121,21 @@ class CollectThreatIntelUseCase:
             overlap=overlap,
         )
 
-    async def _fetch_all_concurrent(self) -> List[SourceResult]:
-        """Launch all source fetches with bounded concurrency via semaphore.
+    def _fetch_all_parallel(self) -> List[SourceResult]:
+        """Launch all source fetches in parallel via ThreadPoolExecutor."""
+        results: List[SourceResult] = []
 
-        At most max_concurrency sources run simultaneously.
-        This prevents API throttling from services that detect
-        concurrent connection bursts from the same IP.
-        """
-        tasks = [
-            self._safe_fetch_with_limit(source)
-            for source in self._sources
-        ]
-        return list(await asyncio.gather(*tasks))
+        with ThreadPoolExecutor(max_workers=self._max_workers) as pool:
+            futures = {
+                pool.submit(self._safe_fetch, source): source
+                for source in self._sources
+            }
+            for future in as_completed(futures):
+                results.append(future.result())
 
-    async def _safe_fetch_with_limit(self, source: ThreatSource) -> SourceResult:
-        """Acquire semaphore before fetching — limits concurrent requests."""
-        async with self._semaphore:
-            return await self._safe_fetch(source)
+        return results
 
-    async def _safe_fetch(self, source: ThreatSource) -> SourceResult:
+    def _safe_fetch(self, source: ThreatSource) -> SourceResult:
         """Run a single source fetch, catching all exceptions.
 
         On success: caches IPs for future fallback.
@@ -148,7 +144,7 @@ class CollectThreatIntelUseCase:
         skip_cache = source.name in _SELF_CACHED_SOURCES
 
         try:
-            ips = await source.fetch()
+            ips = source.fetch()
             logger.info(f"[{source.name}] {len(ips)} IPs")
 
             if not skip_cache and ips:

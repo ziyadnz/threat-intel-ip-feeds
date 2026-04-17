@@ -1,80 +1,80 @@
 # IP Blacklist Aggregator - Health Report
 
-**Date:** 2026-04-17T01:19:50.284274+00:00
-**Duration:** 318.42s
+**Date:** 2026-04-17T04:39:18.744314+00:00
+**Duration:** 321.13s
 **Successful:** 21/21
 
 ## Deduplication & Source Overlap
 
 | Metric | Value |
 |--------|-------|
-| Unique to single source | 46,049 |
-| Found in multiple sources | 38,170 |
+| Unique to single source | 55,576 |
+| Found in multiple sources | 38,903 |
 | Max source overlap | 8 |
-| Avg sources per IP | 1.9 |
+| Avg sources per IP | 1.82 |
 
 ### Per-Source Contribution
 
 | Source | Unique | Shared | Unique % |
 |--------|--------|--------|----------|
-| RTBH (Turkiye) | 20,055 | 16,961 | 54.2% |
-| DShield | 8,363 | 10,916 | 43.4% |
-| Stamparm IPsum | 6,422 | 26,592 | 19.5% |
-| CINS Army | 3,384 | 11,616 | 22.6% |
-| USOM (Turkiye) | 2,683 | 117 | 95.8% |
+| RTBH (Turkiye) | 19,945 | 17,341 | 53.5% |
+| DShield | 17,750 | 13,145 | 57.5% |
+| Stamparm IPsum | 6,228 | 26,786 | 18.9% |
+| CINS Army | 3,844 | 11,156 | 25.6% |
+| USOM (Turkiye) | 2,680 | 120 | 95.7% |
 | Spamhaus DROP | 1,589 | 0 | 100.0% |
-| AbuseIPDB | 1,018 | 8,982 | 10.2% |
-| BinaryDefense | 906 | 3,637 | 19.9% |
+| AbuseIPDB | 1,021 | 8,979 | 10.2% |
+| BinaryDefense | 907 | 3,636 | 20.0% |
 | Tor Exit Nodes | 667 | 646 | 50.8% |
-| GreenSnow | 607 | 3,746 | 13.9% |
+| GreenSnow | 612 | 3,709 | 14.2% |
 | AlienVault OTX | 176 | 37 | 82.6% |
 | Spamhaus DROPv6 | 96 | 0 | 100.0% |
-| Blocklist.de (all) | 39 | 10,659 | 0.4% |
-| Blocklist.de (mail) | 21 | 9,070 | 0.2% |
+| Blocklist.de (all) | 35 | 10,818 | 0.3% |
 | Emerging Threats | 13 | 375 | 3.4% |
 | Blocklist.de (strongips) | 10 | 247 | 3.9% |
+| Blocklist.de (mail) | 3 | 9,216 | 0.0% |
 | Feodo Tracker | 0 | 1 | 0.0% |
-| Blocklist.de (ssh) | 0 | 618 | 0.0% |
-| Blocklist.de (apache) | 0 | 8,612 | 0.0% |
-| Blocklist.de (bots) | 0 | 302 | 0.0% |
-| Blocklist.de (bruteforcelogin) | 0 | 533 | 0.0% |
+| Blocklist.de (ssh) | 0 | 635 | 0.0% |
+| Blocklist.de (apache) | 0 | 8,611 | 0.0% |
+| Blocklist.de (bots) | 0 | 299 | 0.0% |
+| Blocklist.de (bruteforcelogin) | 0 | 532 | 0.0% |
 
 ### Top Source Pair Overlaps
 
 | Pair | Shared IPs |
 |------|-----------|
-| Stamparm IPsum & RTBH (Turkiye) | 15,430 |
-| CINS Army & Stamparm IPsum | 10,467 |
-| DShield & Stamparm IPsum | 10,431 |
-| Blocklist.de (all) & Blocklist.de (mail) | 9,068 |
-| Blocklist.de (all) & Blocklist.de (apache) | 8,610 |
+| Stamparm IPsum & RTBH (Turkiye) | 15,488 |
+| DShield & Stamparm IPsum | 12,250 |
+| CINS Army & Stamparm IPsum | 9,995 |
+| Blocklist.de (all) & Blocklist.de (mail) | 9,216 |
+| Blocklist.de (all) & Blocklist.de (apache) | 8,611 |
+| DShield & RTBH (Turkiye) | 8,200 |
 | Stamparm IPsum & AbuseIPDB | 8,120 |
 | Blocklist.de (mail) & Blocklist.de (apache) | 7,967 |
-| CINS Army & RTBH (Turkiye) | 6,692 |
-| DShield & RTBH (Turkiye) | 6,491 |
-| RTBH (Turkiye) & AbuseIPDB | 5,799 |
+| CINS Army & RTBH (Turkiye) | 6,339 |
+| RTBH (Turkiye) & AbuseIPDB | 5,814 |
 
 ## All Sources
 
 | Source | IPs | Status |
 |--------|-----|--------|
-| RTBH (Turkiye) | 37,016 | OK |
+| RTBH (Turkiye) | 37,286 | OK |
 | Stamparm IPsum | 33,014 | OK |
-| DShield | 19,279 | OK |
+| DShield | 30,895 | OK |
 | CINS Army | 15,000 | OK |
-| Blocklist.de (all) | 10,698 | OK |
+| Blocklist.de (all) | 10,853 | OK |
 | AbuseIPDB | 10,000 | OK |
-| Blocklist.de (mail) | 9,091 | OK |
-| Blocklist.de (apache) | 8,612 | OK |
+| Blocklist.de (mail) | 9,219 | OK |
+| Blocklist.de (apache) | 8,611 | OK |
 | BinaryDefense | 4,543 | OK |
-| GreenSnow | 4,353 | OK |
+| GreenSnow | 4,321 | OK |
 | USOM (Turkiye) | 2,800 | OK |
 | Spamhaus DROP | 1,589 | OK |
 | Tor Exit Nodes | 1,313 | OK |
-| Blocklist.de (ssh) | 618 | OK |
-| Blocklist.de (bruteforcelogin) | 533 | OK |
+| Blocklist.de (ssh) | 635 | OK |
+| Blocklist.de (bruteforcelogin) | 532 | OK |
 | Emerging Threats | 388 | OK |
-| Blocklist.de (bots) | 302 | OK |
+| Blocklist.de (bots) | 299 | OK |
 | Blocklist.de (strongips) | 257 | OK |
 | AlienVault OTX | 213 | OK |
 | Spamhaus DROPv6 | 96 | OK |

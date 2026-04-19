@@ -1,83 +1,83 @@
 # IP Blacklist Aggregator - Health Report
 
-**Date:** 2026-04-18T23:24:06.167883+00:00
-**Duration:** 325.3s
-**Successful:** 21/21
+**Date:** 2026-04-19T01:22:25.595286+00:00
+**Duration:** 319.17s
+**Successful:** 20/21
 
 ## Deduplication & Source Overlap
 
 | Metric | Value |
 |--------|-------|
-| Unique to single source | 131,708 |
-| Found in multiple sources | 39,243 |
-| Max source overlap | 8 |
-| Avg sources per IP | 1.45 |
+| Unique to single source | 41,310 |
+| Found in multiple sources | 36,171 |
+| Max source overlap | 7 |
+| Avg sources per IP | 1.83 |
 
 ### Per-Source Contribution
 
 | Source | Unique | Shared | Unique % |
 |--------|--------|--------|----------|
-| DShield | 90,925 | 15,977 | 85.1% |
-| RTBH (Turkiye) | 19,905 | 17,347 | 53.4% |
-| Stamparm IPsum | 7,240 | 25,810 | 21.9% |
-| CINS Army | 6,404 | 8,596 | 42.7% |
-| USOM (Turkiye) | 2,679 | 121 | 95.7% |
+| RTBH (Turkiye) | 20,651 | 16,766 | 55.2% |
+| Stamparm IPsum | 8,176 | 24,768 | 24.8% |
+| CINS Army | 4,632 | 10,368 | 30.9% |
+| USOM (Turkiye) | 2,693 | 107 | 96.2% |
 | Spamhaus DROP | 1,588 | 0 | 100.0% |
-| AbuseIPDB | 1,037 | 8,963 | 10.4% |
-| BinaryDefense | 939 | 3,777 | 19.9% |
-| GreenSnow | 695 | 3,533 | 16.4% |
-| AlienVault OTX | 152 | 31 | 83.1% |
+| AbuseIPDB | 1,000 | 9,000 | 10.0% |
+| BinaryDefense | 992 | 3,878 | 20.4% |
+| Tor Exit Nodes | 673 | 661 | 50.4% |
+| GreenSnow | 603 | 3,706 | 14.0% |
+| AlienVault OTX | 151 | 31 | 83.0% |
 | Spamhaus DROPv6 | 96 | 0 | 100.0% |
-| Blocklist.de (all) | 22 | 10,968 | 0.2% |
+| Blocklist.de (all) | 24 | 10,917 | 0.2% |
+| Emerging Threats | 15 | 360 | 4.0% |
 | Blocklist.de (strongips) | 9 | 233 | 3.7% |
-| Emerging Threats | 9 | 366 | 2.4% |
-| Tor Exit Nodes | 7 | 1,326 | 0.5% |
-| Blocklist.de (mail) | 1 | 9,466 | 0.0% |
+| Blocklist.de (mail) | 7 | 9,404 | 0.1% |
 | Feodo Tracker | 0 | 1 | 0.0% |
-| Blocklist.de (ssh) | 0 | 686 | 0.0% |
-| Blocklist.de (apache) | 0 | 8,472 | 0.0% |
-| Blocklist.de (bots) | 0 | 289 | 0.0% |
-| Blocklist.de (bruteforcelogin) | 0 | 448 | 0.0% |
+| DShield | 0 | 0 | N/A |
+| Blocklist.de (ssh) | 0 | 700 | 0.0% |
+| Blocklist.de (apache) | 0 | 8,475 | 0.0% |
+| Blocklist.de (bots) | 0 | 280 | 0.0% |
+| Blocklist.de (bruteforcelogin) | 0 | 451 | 0.0% |
 
 ### Top Source Pair Overlaps
 
 | Pair | Shared IPs |
 |------|-----------|
-| Stamparm IPsum & RTBH (Turkiye) | 15,428 |
-| DShield & Stamparm IPsum | 14,209 |
-| DShield & RTBH (Turkiye) | 9,728 |
-| Blocklist.de (all) & Blocklist.de (mail) | 9,466 |
-| Blocklist.de (all) & Blocklist.de (apache) | 8,472 |
-| Stamparm IPsum & AbuseIPDB | 7,972 |
+| Stamparm IPsum & RTBH (Turkiye) | 15,452 |
+| CINS Army & Stamparm IPsum | 9,524 |
+| Blocklist.de (all) & Blocklist.de (mail) | 9,404 |
+| Blocklist.de (all) & Blocklist.de (apache) | 8,474 |
+| Stamparm IPsum & AbuseIPDB | 8,304 |
 | Blocklist.de (mail) & Blocklist.de (apache) | 7,967 |
-| CINS Army & Stamparm IPsum | 7,603 |
-| RTBH (Turkiye) & AbuseIPDB | 5,965 |
-| DShield & AbuseIPDB | 5,249 |
+| CINS Army & RTBH (Turkiye) | 6,234 |
+| RTBH (Turkiye) & AbuseIPDB | 5,973 |
+| BinaryDefense & Stamparm IPsum | 3,758 |
+| GreenSnow & Stamparm IPsum | 3,578 |
 
 ## All Sources
 
 | Source | IPs | Status |
 |--------|-----|--------|
-| DShield | 106,902 | OK |
-| RTBH (Turkiye) | 37,252 | OK |
-| Stamparm IPsum | 33,050 | OK |
+| RTBH (Turkiye) | 37,417 | OK |
+| Stamparm IPsum | 32,944 | OK |
 | CINS Army | 15,000 | OK |
-| Blocklist.de (all) | 10,990 | OK |
+| Blocklist.de (all) | 10,941 | OK |
 | AbuseIPDB | 10,000 | OK |
-| Blocklist.de (mail) | 9,467 | OK |
-| Blocklist.de (apache) | 8,472 | OK |
-| BinaryDefense | 4,716 | OK |
-| GreenSnow | 4,228 | OK |
+| Blocklist.de (mail) | 9,411 | OK |
+| Blocklist.de (apache) | 8,475 | OK |
+| BinaryDefense | 4,870 | OK |
+| GreenSnow | 4,309 | OK |
 | USOM (Turkiye) | 2,800 | OK |
 | Spamhaus DROP | 1,588 | OK |
-| Tor Exit Nodes | 1,333 | OK |
-| Blocklist.de (ssh) | 686 | OK |
-| Blocklist.de (bruteforcelogin) | 448 | OK |
+| Tor Exit Nodes | 1,334 | OK |
+| Blocklist.de (ssh) | 700 | OK |
+| Blocklist.de (bruteforcelogin) | 451 | OK |
 | Emerging Threats | 375 | OK |
-| Blocklist.de (bots) | 289 | OK |
+| Blocklist.de (bots) | 280 | OK |
 | Blocklist.de (strongips) | 242 | OK |
-| AlienVault OTX | 183 | OK |
+| AlienVault OTX | 182 | OK |
 | Spamhaus DROPv6 | 96 | OK |
 | Feodo Tracker | 1 | OK |
+| DShield | 0 | EMPTY |
 
 ## All sources healthy.

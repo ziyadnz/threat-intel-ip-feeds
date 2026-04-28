@@ -1,78 +1,78 @@
 # IP Blacklist Aggregator - Health Report
 
-**Date:** 2026-04-28T20:57:05.019909+00:00
-**Duration:** 321.55s
+**Date:** 2026-04-28T21:51:33.069935+00:00
+**Duration:** 326.29s
 **Successful:** 21/21
 
 ## Deduplication & Source Overlap
 
 | Metric | Value |
 |--------|-------|
-| Unique to single source | 136,006 |
-| Found in multiple sources | 47,104 |
-| Max source overlap | 10 |
-| Avg sources per IP | 1.54 |
+| Unique to single source | 134,667 |
+| Found in multiple sources | 46,980 |
+| Max source overlap | 11 |
+| Avg sources per IP | 1.55 |
 
 ### Per-Source Contribution
 
 | Source | Unique | Shared | Unique % |
 |--------|--------|--------|----------|
-| DShield | 91,408 | 16,015 | 85.1% |
-| RTBH (Turkiye) | 25,424 | 17,573 | 59.1% |
-| CINS Army | 6,645 | 8,355 | 44.3% |
-| Stamparm IPsum | 3,902 | 26,863 | 12.7% |
-| USOM (Turkiye) | 2,675 | 125 | 95.5% |
+| DShield | 91,453 | 16,023 | 85.1% |
+| RTBH (Turkiye) | 23,737 | 17,224 | 58.0% |
+| CINS Army | 6,784 | 8,216 | 45.2% |
+| Stamparm IPsum | 4,039 | 26,726 | 13.1% |
+| USOM (Turkiye) | 2,681 | 119 | 95.8% |
+| BinaryDefense | 1,608 | 4,808 | 25.1% |
 | Spamhaus DROP | 1,602 | 0 | 100.0% |
-| BinaryDefense | 1,590 | 4,826 | 24.8% |
-| AbuseIPDB | 876 | 9,124 | 8.8% |
-| GreenSnow | 834 | 3,100 | 21.2% |
+| AbuseIPDB | 879 | 9,121 | 8.8% |
+| GreenSnow | 829 | 3,102 | 21.1% |
 | Blocklist.de (strongips) | 486 | 270 | 64.3% |
-| Blocklist.de (all) | 280 | 24,605 | 1.1% |
+| Blocklist.de (all) | 288 | 24,687 | 1.2% |
 | AlienVault OTX | 174 | 34 | 83.7% |
 | Spamhaus DROPv6 | 96 | 0 | 100.0% |
 | Tor Exit Nodes | 10 | 1,229 | 0.8% |
-| Blocklist.de (bruteforcelogin) | 3 | 1,509 | 0.2% |
 | Emerging Threats | 1 | 361 | 0.3% |
 | Feodo Tracker | 0 | 1 | 0.0% |
-| Blocklist.de (ssh) | 0 | 4,002 | 0.0% |
-| Blocklist.de (mail) | 0 | 13,647 | 0.0% |
-| Blocklist.de (apache) | 0 | 9,751 | 0.0% |
-| Blocklist.de (bots) | 0 | 4,615 | 0.0% |
+| Blocklist.de (ssh) | 0 | 3,015 | 0.0% |
+| Blocklist.de (mail) | 0 | 13,649 | 0.0% |
+| Blocklist.de (apache) | 0 | 10,930 | 0.0% |
+| Blocklist.de (bots) | 0 | 4,653 | 0.0% |
+| Blocklist.de (bruteforcelogin) | 0 | 2,683 | 0.0% |
 
 ### Top Source Pair Overlaps
 
 | Pair | Shared IPs |
 |------|-----------|
-| Stamparm IPsum & RTBH (Turkiye) | 14,994 |
-| DShield & Stamparm IPsum | 13,992 |
-| Blocklist.de (all) & Blocklist.de (mail) | 13,647 |
-| Blocklist.de (all) & Blocklist.de (apache) | 9,751 |
-| DShield & RTBH (Turkiye) | 9,170 |
-| Blocklist.de (all) & Stamparm IPsum | 8,078 |
+| Stamparm IPsum & RTBH (Turkiye) | 14,707 |
+| DShield & Stamparm IPsum | 14,027 |
+| Blocklist.de (all) & Blocklist.de (mail) | 13,649 |
+| Blocklist.de (all) & Blocklist.de (apache) | 10,928 |
+| DShield & RTBH (Turkiye) | 9,040 |
+| Blocklist.de (all) & Stamparm IPsum | 8,079 |
 | Blocklist.de (mail) & Blocklist.de (apache) | 7,967 |
 | Stamparm IPsum & AbuseIPDB | 7,855 |
-| CINS Army & Stamparm IPsum | 7,085 |
-| RTBH (Turkiye) & AbuseIPDB | 5,136 |
+| CINS Army & Stamparm IPsum | 6,968 |
+| RTBH (Turkiye) & AbuseIPDB | 5,075 |
 
 ## All Sources
 
 | Source | IPs | Status |
 |--------|-----|--------|
-| DShield | 107,423 | OK |
-| RTBH (Turkiye) | 42,997 | OK |
+| DShield | 107,476 | OK |
+| RTBH (Turkiye) | 40,961 | OK |
 | Stamparm IPsum | 30,765 | OK |
-| Blocklist.de (all) | 24,885 | OK |
+| Blocklist.de (all) | 24,975 | OK |
 | CINS Army | 15,000 | OK |
-| Blocklist.de (mail) | 13,647 | OK |
+| Blocklist.de (mail) | 13,649 | OK |
+| Blocklist.de (apache) | 10,930 | OK |
 | AbuseIPDB | 10,000 | OK |
-| Blocklist.de (apache) | 9,751 | OK |
 | BinaryDefense | 6,416 | OK |
-| Blocklist.de (bots) | 4,615 | OK |
-| Blocklist.de (ssh) | 4,002 | OK |
-| GreenSnow | 3,934 | OK |
+| Blocklist.de (bots) | 4,653 | OK |
+| GreenSnow | 3,931 | OK |
+| Blocklist.de (ssh) | 3,015 | OK |
 | USOM (Turkiye) | 2,800 | OK |
+| Blocklist.de (bruteforcelogin) | 2,683 | OK |
 | Spamhaus DROP | 1,602 | OK |
-| Blocklist.de (bruteforcelogin) | 1,512 | OK |
 | Tor Exit Nodes | 1,239 | OK |
 | Blocklist.de (strongips) | 756 | OK |
 | Emerging Threats | 362 | OK |

@@ -232,12 +232,11 @@ with open("output/blacklist.csv") as f:
 
 ---
 
-## Sources (19 feeds)
+## Sources (18 feeds)
 
 | Source | Type | Region | Registration |
 |--------|------|--------|-------------|
 | Spamhaus DROP / DROPv6 | CIDR blocklist | Global | None |
-| Feodo Tracker (abuse.ch) | Botnet C2 | Global | None |
 | DShield / SANS ISC | Intel feed | Global | None |
 | Blocklist.de (7 categories) | Attack IPs | Global | None |
 | CINS Army | Threat list | Global | None |
@@ -246,12 +245,12 @@ with open("output/blacklist.csv") as f:
 | GreenSnow | Threat list | Global | None |
 | Tor Exit Nodes | Anonymizer | Global | None |
 | Stamparm IPsum | Multi-source aggregation | Global | None |
-| **USOM** | Gov. threat feed | Turkey | None |
+| **SGB** | Gov. threat feed | Turkey | None |
 | **RTBH** | National blocklist | Turkey | None |
 | AbuseIPDB | Crowd-sourced reports | Global | Free API key |
 | AlienVault OTX | Pulse indicators | Global | Free API key |
 
-> **Turkey-specific sources (USOM, RTBH) are rarely found in global aggregators** - this project includes them natively.
+> **Turkey-specific sources (SGB, RTBH) are rarely found in global aggregators** - this project includes them natively.
 
 ---
 
@@ -419,7 +418,7 @@ flowchart TD
 graph LR
     subgraph Sources
         GS[Global Sources<br/>15 feeds]
-        TS[Turkey Sources<br/>USOM, RTBH]
+        TS[Turkey Sources<br/>SGB, RTBH]
         AS[API Sources<br/>AbuseIPDB, OTX]
     end
 

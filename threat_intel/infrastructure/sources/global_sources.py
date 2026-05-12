@@ -19,7 +19,6 @@ from threat_intel.infrastructure.sources.urls import (
     CINS_ARMY,
     DSHIELD_INTELFEED,
     EMERGING_THREATS,
-    FEODO_TRACKER,
     GREENSNOW,
     SPAMHAUS_DROP,
     SPAMHAUS_DROPV6,
@@ -64,13 +63,6 @@ class SpamhausDropV6Source(TextListSource):
                     if ip:
                         result.add(ip)
         return result
-
-
-class FeodoTrackerSource(TextListSource):
-    """Feodo Tracker (abuse.ch) — botnet C2 server IPs."""
-
-    def __init__(self, http: HttpClient):
-        super().__init__(http, "Feodo Tracker", FEODO_TRACKER, "botnet-c2")
 
 
 class DShieldSource:

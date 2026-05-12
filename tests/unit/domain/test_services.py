@@ -20,13 +20,13 @@ from datetime import datetime, timezone
 class TestResolveCategory:
     def test_known_source(self):
         # Arrange
-        sources = frozenset({"Feodo Tracker"})
+        sources = frozenset({"DShield"})
 
         # Act
         category = resolve_category(sources)
 
         # Assert
-        assert category == ThreatCategory.BOTNET_C2
+        assert category == ThreatCategory.SCANNER
 
     def test_unknown_source(self):
         # Arrange
@@ -191,7 +191,7 @@ class TestIndicatorBuilder:
         # Arrange
         now = datetime.now(timezone.utc)
         ip = IPAddress.parse("1.2.3.4")
-        ip_sources = {"1.2.3.4": frozenset({"Feodo Tracker"})}
+        ip_sources = {"1.2.3.4": frozenset({"DShield"})}
         ip_objects = {"1.2.3.4": ip}
 
         # Act
@@ -200,7 +200,7 @@ class TestIndicatorBuilder:
         # Assert
         assert len(indicators) == 1
         assert indicators[0].ip.raw == "1.2.3.4"
-        assert indicators[0].category == ThreatCategory.BOTNET_C2
+        assert indicators[0].category == ThreatCategory.SCANNER
         assert indicators[0].confidence.value == 20
 
     def test_multi_source_confidence(self):

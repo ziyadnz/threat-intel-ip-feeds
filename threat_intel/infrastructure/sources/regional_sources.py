@@ -1,4 +1,4 @@
-"""Regional threat source adapters (Turkey: USOM, RTBH)."""
+"""Regional threat source adapters (Turkey: SGB, RTBH)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ from threat_intel.domain.entities import IPAddress
 from threat_intel.domain.ports import HttpClient, ThreatSource
 from threat_intel.domain.services import IPValidator
 from threat_intel.infrastructure.sources.base import TextListSource
-from threat_intel.infrastructure.sources.urls import RTBH, USOM_API
+from threat_intel.infrastructure.sources.urls import RTBH, SGB_API
 
 
-class UsomSource(ThreatSource):
-    """USOM (Turkey) — government-published malicious IPs via paginated API."""
+class SgbSource(ThreatSource):
+    """SGB (Turkey) — government-published malicious IPs via paginated API."""
 
     def __init__(self, http: HttpClient, max_ips: int = 10000,
                  rate_limit_delay: float = 2.0):
@@ -23,7 +23,7 @@ class UsomSource(ThreatSource):
 
     @property
     def name(self) -> str:
-        return "USOM (Turkiye)"
+        return "SGB (Turkiye)"
 
     @property
     def category(self) -> str:
@@ -34,7 +34,7 @@ class UsomSource(ThreatSource):
         page = 1
 
         while len(result) < self._max_ips:
-            url = f"{USOM_API}?type=ip&page={page}"
+            url = f"{SGB_API}?type=ip&page={page}"
             data = self._http.get_json(url, headers={"accept": "application/json"})
 
             models = data.get("models", [])

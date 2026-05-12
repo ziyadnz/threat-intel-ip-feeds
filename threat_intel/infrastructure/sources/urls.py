@@ -8,9 +8,6 @@ editing only this file. No source adapter code needs to change.
 SPAMHAUS_DROP = "https://www.spamhaus.org/drop/drop.txt"
 SPAMHAUS_DROPV6 = "https://www.spamhaus.org/drop/dropv6.txt"
 
-# abuse.ch
-FEODO_TRACKER = "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt"
-
 # SANS / DShield
 DSHIELD_INTELFEED = "https://isc.sans.edu/api/intelfeed?json"
 
@@ -36,7 +33,7 @@ TOR_EXIT_NODES = "https://check.torproject.org/torbulkexitlist"
 STAMPARM_IPSUM = "https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt"
 
 # Turkey
-USOM_API = "https://www.usom.gov.tr/api/address/index"
+SGB_API = "https://siberguvenlik.gov.tr/api/address/index"
 RTBH = "https://list.rtbh.com.tr/output.txt"
 
 # API sources

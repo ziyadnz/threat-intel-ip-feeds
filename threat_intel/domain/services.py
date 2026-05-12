@@ -26,7 +26,6 @@ from threat_intel.domain.entities import (
 SOURCE_CATEGORY_MAP: Dict[str, ThreatCategory] = {
     "Spamhaus DROP": ThreatCategory.INFRASTRUCTURE,
     "Spamhaus DROPv6": ThreatCategory.INFRASTRUCTURE,
-    "Feodo Tracker": ThreatCategory.BOTNET_C2,
     "DShield": ThreatCategory.SCANNER,
     "Blocklist.de (all)": ThreatCategory.ATTACKER,
     "Blocklist.de (ssh)": ThreatCategory.BRUTE_FORCE,
@@ -41,7 +40,7 @@ SOURCE_CATEGORY_MAP: Dict[str, ThreatCategory] = {
     "GreenSnow": ThreatCategory.ATTACKER,
     "Tor Exit Nodes": ThreatCategory.ANONYMIZER,
     "Stamparm IPsum": ThreatCategory.MULTI_SOURCE,
-    "USOM (Turkiye)": ThreatCategory.GOVERNMENT_FEED,
+    "SGB (Turkiye)": ThreatCategory.GOVERNMENT_FEED,
     "RTBH (Turkiye)": ThreatCategory.GOVERNMENT_FEED,
     "AbuseIPDB": ThreatCategory.CROWD_SOURCED,
     "AlienVault OTX": ThreatCategory.THREAT_INTEL,

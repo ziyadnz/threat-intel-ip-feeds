@@ -21,7 +21,6 @@ from threat_intel.infrastructure.sources.global_sources import (
     CinsArmySource,
     DShieldSource,
     EmergingThreatsSource,
-    FeodoTrackerSource,
     GreenSnowSource,
     SpamhausDropSource,
     SpamhausDropV6Source,
@@ -30,7 +29,7 @@ from threat_intel.infrastructure.sources.global_sources import (
 )
 from threat_intel.infrastructure.sources.regional_sources import (
     RtbhSource,
-    UsomSource,
+    SgbSource,
 )
 from threat_intel.infrastructure.sources.api_sources import (
     AbuseIPDBSource,
@@ -96,7 +95,6 @@ def _build_sources(http: RequestsClient, config: AppConfig) -> list:
     return [
         SpamhausDropSource(http),
         SpamhausDropV6Source(http),
-        FeodoTrackerSource(http),
         DShieldSource(http),
         BlocklistDeSource(http, "all"),
         BlocklistDeSource(http, "ssh"),
@@ -111,7 +109,7 @@ def _build_sources(http: RequestsClient, config: AppConfig) -> list:
         GreenSnowSource(http),
         TorExitSource(http),
         StamparmIpsumSource(http, min_score=config.ipsum_min_score),
-        UsomSource(http),
+        SgbSource(http),
         RtbhSource(http),
         AbuseIPDBSource(http, config.abuseipdb_key, config.output_dir),
         AlienVaultOTXSource(http, config.otx_key, config.output_dir),

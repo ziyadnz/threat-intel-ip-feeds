@@ -9,7 +9,6 @@ from threat_intel.infrastructure.sources.global_sources import (
     BinaryDefenseSource,
     BlocklistDeSource,
     CinsArmySource,
-    FeodoTrackerSource,
     GreenSnowSource,
     SpamhausDropSource,
     StamparmIpsumSource,
@@ -67,21 +66,6 @@ class TestSpamhausDropSource:
         ips = source.fetch()
 
         assert len(ips) == 0
-
-
-class TestFeodoTrackerSource:
-    def test_extracts_public_ips(self):
-        http = FakeHttpClient(text_responses={
-            "feodotracker": "# Comment\n1.2.3.4\n5.6.7.8\n192.168.1.1\n",
-        })
-        source = FeodoTrackerSource(http)
-
-        ips = source.fetch()
-
-        raws = {ip.raw for ip in ips}
-        assert "1.2.3.4" in raws
-        assert "5.6.7.8" in raws
-        assert "192.168.1.1" not in raws
 
 
 class TestBlocklistDeSource:

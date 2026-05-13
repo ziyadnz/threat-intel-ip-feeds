@@ -29,12 +29,14 @@ class SgbSource(ThreatSource):
     def category(self) -> str:
         return "government-feed"
 
+    PAGE_SIZE = 10000
+
     def fetch(self) -> Set[IPAddress]:
         result = set()
         page = 1
 
         while len(result) < self._max_ips:
-            url = f"{SGB_API}?type=ip&page={page}"
+            url = f"{SGB_API}?type=ip&page={page}&per-page={self.PAGE_SIZE}"
             data = self._http.get_json(url, headers={"accept": "application/json"})
 
             models = data.get("models", [])
@@ -49,9 +51,7 @@ class SgbSource(ThreatSource):
                     if len(result) >= self._max_ips:
                         break
 
-            total_count = data.get("totalCount", 0)
-            page_size = data.get("pageSize", 100)
-            if page * page_size >= total_count:
+            if page >= data.get("pageCount", 1):
                 break
             page += 1
             time.sleep(self._rate_delay)

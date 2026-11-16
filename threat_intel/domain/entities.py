@@ -66,7 +66,7 @@ class IPAddress:
         except ValueError:
             return None
 
-        return IPAddress(raw=raw, version=version, is_cidr=is_cidr)
+        return IPAddress(raw=str(net if is_cidr else addr), version=version, is_cidr=is_cidr)
 
     @property
     def is_public(self) -> bool:
@@ -128,8 +128,10 @@ class WhitelistEntry:
                 if self._network is not None:
                     if target_net.version != self._network.version:
                         return False
-                    return target_net.subnet_of(self._network)
-                return False
+                    return target_net.overlaps(self._network)
+                return (self._address is not None
+                        and self._address.version == target_net.version
+                        and self._address in target_net)
             else:
                 target_addr = ipaddress.ip_address(ip.raw)
                 if self._address is not None:
@@ -183,6 +185,9 @@ class SourceResult:
     ips: FrozenSet[IPAddress]
     error: Optional[str] = None
     from_cache: bool = False
+    partial: bool = False
+    skipped: bool = False
+    observed_at: Optional[datetime] = None
 
     @property
     def is_success(self) -> bool:

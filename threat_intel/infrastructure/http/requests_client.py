@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import logging
 import time
+import threading
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Dict, Optional
 
 import requests
@@ -20,8 +23,9 @@ logger = logging.getLogger(__name__)
 class HttpError(Exception):
     """HTTP error with status code."""
 
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, retry_after: float = 0):
         self.status = status
+        self.retry_after = retry_after
         super().__init__(f"HTTP {status}: {message}")
 
 
@@ -40,7 +44,18 @@ class RequestsClient(HttpClient):
         self._default_timeout = default_timeout
         self._max_retries = max_retries
         self._backoff_base = backoff_base
-        self._session = requests.Session()
+        self._local = threading.local()
+        self._sessions = []
+        self._sessions_lock = threading.Lock()
+
+    @property
+    def _session(self):
+        if not hasattr(self._local, "session"):
+            session = requests.Session()
+            self._local.session = session
+            with self._sessions_lock:
+                self._sessions.append(session)
+        return self._local.session
 
     def get(self, url: str, headers: Optional[Dict] = None,
             timeout: int = 0) -> str:
@@ -53,7 +68,9 @@ class RequestsClient(HttpClient):
         return self._request(url, headers, effective_timeout).json()
 
     def close(self) -> None:
-        self._session.close()
+        for session in self._sessions:
+            session.close()
+        self._sessions.clear()
 
     def _request(
         self, url: str, headers: Optional[Dict], timeout: int,
@@ -85,15 +102,19 @@ class RequestsClient(HttpClient):
         status = resp.status_code
         body = resp.text[:200]
 
-        if status == 429:
-            retry_after = resp.headers.get("Retry-After")
-            wait = (
-                float(retry_after)
-                if retry_after and retry_after.isdigit()
-                else self._backoff_base ** (attempt + 1)
-            )
-            logger.warning(f"[{resp.url}] Rate limited (429), retrying in {wait}s")
-            raise HttpError(429, body)
+        if status == 429 or status == 503:
+            retry_after = resp.headers.get("Retry-After", "")
+            wait = 0.0
+            if retry_after:
+                try:
+                    wait = max(0.0, float(retry_after))
+                except ValueError:
+                    try:
+                        date = parsedate_to_datetime(retry_after)
+                        wait = max(0.0, (date - datetime.now(timezone.utc)).total_seconds())
+                    except (ValueError, TypeError, OverflowError):
+                        pass
+            raise HttpError(status, body, retry_after=wait)
 
         if status < 500:
             logger.error(f"[{resp.url}] Client error ({status}), no retry")
@@ -103,7 +124,8 @@ class RequestsClient(HttpClient):
 
     def _wait_or_raise(self, url: str, attempt: int, error: Exception):
         if attempt < self._max_retries - 1:
-            wait = self._backoff_base ** (attempt + 1)
+            wait = max(self._backoff_base ** (attempt + 1),
+                       getattr(error, "retry_after", 0))
             logger.warning(
                 f"[{url}] Attempt {attempt + 1}/{self._max_retries} "
                 f"failed, retrying in {wait}s: {error}"

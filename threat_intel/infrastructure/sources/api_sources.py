@@ -1,9 +1,4 @@
-"""API-authenticated threat source adapters (AbuseIPDB, AlienVault OTX).
-
-These sources require API keys and have rate limits.
-Cache management is handled here as infrastructure concern.
-URLs are imported from urls.py — the single source of truth for endpoints.
-"""
+"""Rate-limited API sources with explicit cache freshness and failure outcomes."""
 
 from __future__ import annotations
 
@@ -11,125 +6,111 @@ import json
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from typing import Set
 
-from threat_intel.domain.entities import IPAddress
+from threat_intel.domain.entities import IPAddress, SourceResult
 from threat_intel.domain.ports import HttpClient, ThreatSource
 from threat_intel.domain.services import IPValidator
-from threat_intel.infrastructure.sources.urls import (
-    ABUSEIPDB_BLACKLIST,
-    ALIENVAULT_OTX_PULSES,
-)
+from threat_intel.infrastructure.sources.urls import ABUSEIPDB_BLACKLIST, ALIENVAULT_OTX_PULSES
 
 logger = logging.getLogger(__name__)
 
 
-class AbuseIPDBSource(ThreatSource):
-    """AbuseIPDB — crowd-sourced abuse reports with rate-limit-aware caching."""
-
-    def __init__(
-        self,
-        http: HttpClient,
-        api_key: str,
-        cache_dir: str,
-        allowed_hours: frozenset = frozenset({0, 5, 10, 15, 20}),
-        confidence_minimum: int = 90,
-    ):
-        self._http = http
-        self._api_key = api_key
-        self._cache_path = os.path.join(cache_dir, "abuseipdb_cache.json")
-        self._allowed_hours = allowed_hours
-        self._confidence_min = confidence_minimum
-
-    @property
-    def name(self) -> str:
-        return "AbuseIPDB"
-
-    @property
-    def category(self) -> str:
-        return "crowd-sourced"
+class _CachedAPISource(ThreatSource):
+    """Persist successful fetches atomically; never present fallback as fresh data."""
 
     def fetch(self) -> Set[IPAddress]:
-        if not self._api_key:
-            logger.warning(f"[{self.name}] No API key, skipping.")
-            return set()
+        return set(self.fetch_result().ips)
 
-        current_hour = datetime.now(timezone.utc).hour
-        if current_hour not in self._allowed_hours:
-            return self._load_cache()
-
-        headers = {
-            "Key": self._api_key,
-            "Accept": "application/json",
-            "User-Agent": "IP-Blacklist-Aggregator/5.0",
-        }
-        url = (
-            f"{ABUSEIPDB_BLACKLIST}"
-            f"?confidenceMinimum={self._confidence_min}&limit=10000"
-        )
-
+    def _cached_result(self, error=None, skipped=False):
+        ips, observed_at = set(), None
         try:
-            data = self._http.get_json(url, headers=headers)
-        except Exception as e:
-            logger.warning(f"[{self.name}] API failed ({e}), falling back to cache")
-            return self._load_cache()
-
-        result = set()
-        for entry in data.get("data", []):
-            ip = IPValidator.parse_and_validate(entry.get("ipAddress", ""))
-            if ip:
-                result.add(ip)
-
-        if result:
-            self._save_cache(result)
-        else:
-            result = self._load_cache()
-
-        return result
-
-    def _save_cache(self, ips: Set[IPAddress]):
-        try:
-            data = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "ips": sorted(ip.raw for ip in ips),
-            }
-            with open(self._cache_path, "w", encoding="utf-8") as f:
-                json.dump(data, f)
-        except OSError as e:
-            logger.warning(f"[{self.name}] Cache write failed: {e}")
-
-    def _load_cache(self) -> Set[IPAddress]:
-        try:
-            with open(self._cache_path, "r", encoding="utf-8") as f:
+            with open(self._cache_path, encoding="utf-8") as f:
                 data = json.load(f)
-            result = set()
             for raw in data.get("ips", []):
                 ip = IPAddress.parse(raw)
                 if ip:
-                    result.add(ip)
-            logger.info(f"[{self.name}] Loaded {len(result)} from cache")
-            return result
-        except (FileNotFoundError, json.JSONDecodeError):
-            return set()
+                    ips.add(ip)
+            observed_at = datetime.fromisoformat(data["timestamp"])
+            if observed_at.tzinfo is None or observed_at > datetime.now(timezone.utc):
+                observed_at = None
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
+            pass
+        return SourceResult(self.name, frozenset(ips), error=error,
+                            from_cache=bool(ips), skipped=skipped,
+                            observed_at=observed_at)
+
+    def _save_cache(self, ips, now):
+        try:
+            os.makedirs(os.path.dirname(self._cache_path), exist_ok=True)
+            tmp = self._cache_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"timestamp": now.isoformat(),
+                           "ips": sorted(ip.raw for ip in ips)}, f)
+            os.replace(tmp, self._cache_path)
+        except OSError as e:
+            logger.warning("[%s] Cache write failed: %s", self.name, e)
+            try:
+                os.unlink(self._cache_path + ".tmp")
+            except OSError:
+                pass
 
 
-class AlienVaultOTXSource(ThreatSource):
-    """AlienVault OTX — community threat intel pulses with pagination.
+class AbuseIPDBSource(_CachedAPISource):
+    """Refresh at most once every four hours after a successful fetch."""
 
-    Pages are fetched in parallel via ThreadPoolExecutor (bounded).
-    Failed pages are retried once after all pages complete.
+    def __init__(self, http: HttpClient, api_key: str, cache_dir: str,
+                 refresh_hours: float = 4, confidence_minimum: int = 90):
+        self._http = http
+        self._api_key = api_key
+        self._cache_path = os.path.join(cache_dir, "abuseipdb_cache.json")
+        self._refresh_interval = timedelta(hours=refresh_hours)
+        self._confidence_min = confidence_minimum
+
+    @property
+    def name(self):
+        return "AbuseIPDB"
+
+    @property
+    def category(self):
+        return "crowd-sourced"
+
+    def fetch_result(self):
+        if not self._api_key:
+            return SourceResult(self.name, frozenset(), skipped=True)
+        now = datetime.now(timezone.utc)
+        cached = self._cached_result()
+        if cached.observed_at and now - cached.observed_at < self._refresh_interval:
+            return cached
+        headers = {"Key": self._api_key, "Accept": "application/json",
+                   "User-Agent": "IP-Blacklist-Aggregator/6.0"}
+        url = f"{ABUSEIPDB_BLACKLIST}?confidenceMinimum={self._confidence_min}&limit=10000"
+        try:
+            data = self._http.get_json(url, headers=headers)
+            entries = data["data"]
+            if not isinstance(entries, list):
+                raise ValueError("Invalid AbuseIPDB data payload")
+            ips = {ip for entry in entries
+                   if (ip := IPValidator.parse_and_validate(entry.get("ipAddress", "")))}
+            if not ips:
+                raise ValueError("AbuseIPDB returned no valid IPs; preserving cache")
+        except Exception as e:
+            return self._cached_result(error=f"{type(e).__name__}: {e}")
+        self._save_cache(ips, now)
+        return SourceResult(self.name, frozenset(ips), observed_at=now)
+
+
+class AlienVaultOTXSource(_CachedAPISource):
+    """Fetch bounded page batches, honor pagination, and retain fallback data.
+
+    Existing concurrency (3), HTTP retries/timeouts, and the two-second outer
+    retry delay are preserved. Permanent HTTP errors are not retried again.
     """
 
-    def __init__(
-        self,
-        http: HttpClient,
-        api_key: str,
-        cache_dir: str,
-        max_pages: int = 20,
-        page_concurrency: int = 3,
-    ):
+    def __init__(self, http: HttpClient, api_key: str, cache_dir: str,
+                 max_pages: int = 20, page_concurrency: int = 3):
         self._http = http
         self._api_key = api_key
         self._cache_path = os.path.join(cache_dir, "otx_cache.json")
@@ -137,116 +118,85 @@ class AlienVaultOTXSource(ThreatSource):
         self._page_concurrency = page_concurrency
 
     @property
-    def name(self) -> str:
+    def name(self):
         return "AlienVault OTX"
 
     @property
-    def category(self) -> str:
+    def category(self):
         return "threat-intel"
 
-    def fetch(self) -> Set[IPAddress]:
+    def fetch_result(self):
         if not self._api_key:
-            logger.warning(f"[{self.name}] No API key, skipping.")
-            return set()
-
-        headers = {
-            "X-OTX-API-KEY": self._api_key,
-            "User-Agent": "IP-Blacklist-Aggregator/5.0",
-        }
-
-        result = set()
-        failed_pages = []
-
-        # Fetch pages in parallel (bounded by page_concurrency)
+            return SourceResult(self.name, frozenset(), skipped=True)
+        headers = {"X-OTX-API-KEY": self._api_key,
+                   "User-Agent": "IP-Blacklist-Aggregator/6.0"}
+        result, failures = set(), {}
+        end_page = self._max_pages
         with ThreadPoolExecutor(max_workers=self._page_concurrency) as pool:
-            futures = {
-                pool.submit(self._fetch_page, page, headers): page
-                for page in range(1, self._max_pages + 1)
-            }
-            for future in as_completed(futures):
-                page = futures[future]
-                ips, ok = future.result()
-                if ok:
-                    result.update(ips)
-                elif ips is None:
-                    failed_pages.append(page)
-
-        # Retry failed pages once
-        if failed_pages:
-            logger.info(
-                f"[{self.name}] Retrying {len(failed_pages)} failed pages: "
-                f"{failed_pages}"
-            )
-            time.sleep(2)
-            with ThreadPoolExecutor(max_workers=self._page_concurrency) as pool:
-                futures = {
-                    pool.submit(self._fetch_page, p, headers): p
-                    for p in failed_pages
-                }
-                for future in as_completed(futures):
-                    page = futures[future]
-                    ips, ok = future.result()
-                    if ok:
-                        result.update(ips)
+            for first in range(1, self._max_pages + 1, self._page_concurrency):
+                if first > end_page:
+                    break
+                pages = range(first, min(first + self._page_concurrency, end_page + 1))
+                fetched = list(pool.map(lambda p: self._fetch_page(p, headers), pages))
+                for page, (ips, more, error) in zip(pages, fetched):
+                    if error is None and not more:
+                        end_page = min(end_page, page)
+                for page, (ips, more, error) in zip(pages, fetched):
+                    if page > end_page:
+                        continue
+                    if error:
+                        failures[page] = error
                     else:
-                        logger.warning(f"[{self.name}] Page {page} failed twice")
+                        result.update(ips)
+            retryable = [p for p, e in failures.items()
+                         if getattr(e, "status", 0) not in range(400, 500)
+                         or getattr(e, "status", 0) == 429]
+            if retryable:
+                time.sleep(max(2, *(getattr(failures[p], "retry_after", 0)
+                                    for p in retryable)))
+                fetched = pool.map(lambda p: self._fetch_page(p, headers), retryable)
+                for page, (ips, more, error) in zip(retryable, fetched):
+                    if error is None:
+                        if not more:
+                            end_page = min(end_page, page)
+                        result.update(ips)
+                        del failures[page]
+                    else:
+                        failures[page] = error
+        # A later successful end-of-feed response makes higher failed pages irrelevant.
+        failures = {p: e for p, e in failures.items() if p <= end_page}
+        now = datetime.now(timezone.utc)
+        if failures:
+            cached = self._cached_result(error="OTX pages failed: " + ", ".join(
+                f"{p} ({e})" for p, e in sorted(failures.items())))
+            # Keep newly obtained partial data and the previous complete snapshot.
+            # Do not overwrite that snapshot or claim a fresh complete fetch.
+            return SourceResult(self.name, frozenset(result | set(cached.ips)),
+                                error=cached.error, from_cache=bool(cached.ips),
+                                partial=bool(result),
+                                observed_at=cached.observed_at)
+        if not result:
+            return self._cached_result(error="OTX returned no valid IPs; preserving cache")
+        self._save_cache(result, now)
+        return SourceResult(self.name, frozenset(result), observed_at=now)
 
-        if result:
-            self._save_cache(result)
-            logger.info(f"[{self.name}] {len(result)} IPs (cache updated)")
-        else:
-            result = self._load_cache()
-
-        return result
-
-    def _fetch_page(self, page: int, headers: dict) -> tuple:
-        """Fetch a single page. Returns (ips, True) on success,
-        (None, False) on failure, (set(), True) if empty/end."""
+    def _fetch_page(self, page, headers):
         url = f"{ALIENVAULT_OTX_PULSES}?limit=50&page={page}"
         try:
             data = self._http.get_json(url, headers=headers, timeout=90)
+            pulses = data["results"]
+            if not isinstance(pulses, list):
+                raise ValueError("Invalid OTX results payload")
+            ips = set()
+            for pulse in pulses:
+                for indicator in pulse.get("indicators", []):
+                    if indicator.get("type") in ("IPv4", "IPv6"):
+                        ip = IPValidator.parse_and_validate(indicator.get("indicator", ""))
+                        if ip:
+                            ips.add(ip)
+            # Missing pagination metadata is treated conservatively, up to max_pages.
+            more = bool(pulses) and bool(data.get("next", True))
+            return ips, more, None
         except Exception as e:
-            logger.warning(f"[{self.name}] Page {page} failed: {e}")
-            return (None, False)
-
-        pulses = data.get("results", [])
-        if not pulses:
-            return (set(), True)
-
-        ips = set()
-        for pulse in pulses:
-            for indicator in pulse.get("indicators", []):
-                if indicator.get("type") in ("IPv4", "IPv6"):
-                    ip = IPValidator.parse_and_validate(
-                        indicator.get("indicator", "")
-                    )
-                    if ip:
-                        ips.add(ip)
-        return (ips, True)
-
-    def _save_cache(self, ips: Set[IPAddress]):
-        try:
-            data = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "ips": sorted(ip.raw for ip in ips),
-            }
-            with open(self._cache_path, "w", encoding="utf-8") as f:
-                json.dump(data, f)
-        except OSError as e:
-            logger.warning(f"[{self.name}] Cache write failed: {e}")
-
-    def _load_cache(self) -> Set[IPAddress]:
-        try:
-            with open(self._cache_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            result = set()
-            for raw in data.get("ips", []):
-                ip = IPAddress.parse(raw)
-                if ip:
-                    result.add(ip)
-            ts = data.get("timestamp", "?")
-            logger.info(f"[{self.name}] Loaded {len(result)} from cache ({ts})")
-            return result
-        except (FileNotFoundError, json.JSONDecodeError):
-            logger.warning(f"[{self.name}] No cache available")
-            return set()
+            logger.warning("[%s] Page %s failed: %s", self.name, page, e)
+            return set(), True, e

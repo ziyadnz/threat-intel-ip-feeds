@@ -317,7 +317,7 @@ Prevent false positives by adding trusted IPs to `whitelist.txt`:
 **How it works:**
 - One IP or CIDR per line, comments start with `#`
 - Individual IPs are filtered by exact match or CIDR containment
-- CIDRs are filtered only if fully covered by a whitelisted range
+- Any block CIDR overlapping a whitelisted address or range is omitted in full; this protects the whitelist without expanding ranges into many smaller blocks
 - Supports both IPv4 and IPv6
 - Whitelist stats appear in the health report and console summary
 - The whitelist is applied **before** IPs enter the output files
@@ -330,14 +330,14 @@ This isn't a script that breaks silently. Every failure is tracked, reported, an
 
 | Mechanism | What It Does |
 |-----------|-------------|
-| **Async I/O** | All 19 sources fetched concurrently via `asyncio.gather` + `aiohttp` — single event loop, no thread pool |
-| **Error Isolation** | Each source runs as an independent coroutine. One failure never affects the other 17+ |
-| **Auto Retry** | Failed requests retry 3x with exponential backoff (2s, 4s, 8s) using `aiohttp`. Permanent 4xx errors skip retry |
-| **Rollback Protection** | If success rate drops below 20%, existing output files are preserved — not overwritten with bad data |
+| **Parallel Fetching** | Sources fetched using a bounded thread pool and thread-local `requests.Session` connections; default 10 workers |
+| **Error Isolation** | Each source is fetched independently; failures use its last cached data when available |
+| **Auto Retry** | Up to 3 attempts, with 2s and 4s backoff between attempts; longer server `Retry-After` delays are honored. Permanent 4xx errors skip retry |
+| **Rollback Protection** | Refuse low-success collections; stage all feed formats before publishing, replace individual files atomically, and restore replaced files on a publishing error |
 | **Health Tracking** | `source_health.json` records every run: consecutive failures, last success, IP counts |
 | **Stale Detection** | Sources with no data for 30+ days are flagged |
-| **GitHub Issue Alerts** | Auto-creates issues on failure, auto-closes on recovery |
-| **Exit Codes** | `0` = OK, `1` = partial failure (output written), `2` = critical (output preserved) |
+| **GitHub Issue Alerts** | Update one existing source-health issue during an outage; auto-close health issues on recovery |
+| **Exit Codes** | `0` = OK, `1` = partial source failure, `2` = fatal processing or publishing failure; Actions commits only for codes 0 and 1 |
 | **IP Whitelisting** | Trusted IPs/CIDRs in `whitelist.txt` are never included in output |
 | **Dedup Metrics** | Source overlap analysis helps identify redundant or low-value sources |
 
@@ -348,11 +348,11 @@ This isn't a script that breaks silently. Every failure is tracked, reported, an
 ```bash
 git clone https://github.com/ziyadnz/threat-intel-ip-feeds.git
 cd threat-intel-ip-feeds
-pip install -r requirements.txt
+pip install -r requirements-runtime.txt
 python run.py
 ```
 
-> **Requires Python 3.10+** (for `asyncio.run` and modern type hints).
+> **Requires Python 3.10+**. GitHub Actions runs Python 3.13.
 
 ### With API Keys (optional)
 ```bash
@@ -360,6 +360,31 @@ export ABUSEIPDB_API_KEY="your_key"    # https://www.abuseipdb.com/register
 export OTX_API_KEY="your_key"          # https://otx.alienvault.com
 python run.py
 ```
+
+### Refresh, caching, and publishing
+
+AbuseIPDB refreshes when its last successful cached fetch is at least four hours old.
+Scheduled cache reuse does not advance the source's last successful fetch time.
+API failures preserve their error status even when cached IPs are available; missing API
+keys are reported as skipped. OTX keeps the last complete cache when some pages fail,
+and reports any newly collected partial data separately from a complete successful fetch.
+Existing SGB pagination delays, OTX concurrency limits, and HTTP timeouts remain in place.
+
+CSV `first_seen` persists from the previous published CSV; `last_seen` advances on fresh
+successful observations, not cache reuse. An IP that disappears and later returns begins
+a new observation period. Existing history before this feature cannot be reconstructed.
+STIX ordering and bundle IDs are deterministic for unchanged content; indicator timestamps
+change only with the relevant observation or content changes. Health records and fetch
+cache timestamps still update to describe actual refreshes, so every run may still commit.
+
+Actions serializes collection runs and has a 90-minute safety timeout. Fatal runs do not
+commit output. Logs report fetching, processing, publishing, and total application time.
+`CONNECTOR_LIMIT` controls the source worker count (default 10); it does not change OTX's
+separate three-page concurrency limit. No Actions dependency cache or artifacts are added.
+
+Files are published with atomic individual replacements and rollback on caught errors.
+A process kill during the multi-file publish can still leave a mixture of old and new files;
+a filesystem-wide transaction is not provided. Feed URLs and formats are preserved.
 
 ### Automate with cron
 ```bash
@@ -372,13 +397,13 @@ pip install -r requirements.txt
 python -m pytest tests/unit/ -v
 ```
 
-The test suite (80 tests, 0.2s) covers:
+The test suite covers:
 - Domain entities, value objects, and services (pure logic, zero I/O)
-- Use case orchestration with stub ports (async)
-- aiohttp client retry logic with mocked HTTP
-- Source parsing with async fake HTTP client
+- Use case orchestration with stub ports
+- Requests retry logic, server-directed delays, and thread-local sessions
+- Source parsing, API pagination, and four-hour cache refresh behavior with fake HTTP clients
 - CSV, STIX, raw, JSON output format correctness
-- Rollback protection and health tracking
+- Staged output publishing, rollback, cache freshness, and health tracking
 
 ---
 
@@ -387,11 +412,11 @@ The test suite (80 tests, 0.2s) covers:
 ```mermaid
 flowchart TD
     A[Start - Every Hour] --> B[Load Whitelist + Health State]
-    B --> C[Launch 21 async coroutines via asyncio.gather]
-    C --> D{aiohttp Request}
+    B --> C[Launch bounded source fetch threads]
+    C --> D{HTTP Request}
     D -->|Success| E[Extract & Validate IPs]
     D -->|Fail| F{Retry < 3?}
-    F -->|Yes| G[Async backoff 2s/4s/8s] --> D
+    F -->|Yes| G[Backoff 2s/4s or Retry-After] --> D
     F -->|No| H[Record Failure]
     E --> I[Record Success]
     H --> WF[Apply Whitelist Filter]

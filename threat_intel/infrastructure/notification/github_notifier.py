@@ -27,8 +27,13 @@ class GitHubIssueNotifier(Notifier):
 
         self._ensure_label()
 
-        if self._has_open_issue(title):
-            logger.info("Open issue already exists, skipping.")
+        try:
+            issue = self._open_issue()
+        except (RuntimeError, ValueError, KeyError, TypeError) as e:
+            logger.warning("Cannot update health alert: %s", e)
+            return
+        if issue is not None:
+            self._gh(["issue", "edit", str(issue), "--title", title, "--body", body])
             return
 
         result = self._gh([
@@ -92,12 +97,12 @@ class GitHubIssueNotifier(Notifier):
             "--color", "d93f0b", "--force",
         ])
 
-    def _has_open_issue(self, title: str) -> bool:
+    def _open_issue(self):
         result = self._gh([
-            "issue", "list",
-            "--label", self.LABEL,
-            "--state", "open",
-            "--limit", "5",
-            "--json", "title,number",
+            "issue", "list", "--label", self.LABEL, "--state", "open",
+            "--limit", "100", "--json", "number",
         ])
-        return result.returncode == 0 and title in result.stdout
+        if result.returncode != 0:
+            raise RuntimeError("Cannot check existing health alerts; refusing duplicate creation")
+        issues = json.loads(result.stdout)
+        return min((issue["number"] for issue in issues), default=None)

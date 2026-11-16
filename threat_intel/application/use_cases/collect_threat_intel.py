@@ -7,6 +7,8 @@ filtering, dedup analysis, and health tracking.
 from __future__ import annotations
 
 import logging
+import time
+from dataclasses import replace
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -65,7 +67,10 @@ class CollectThreatIntelUseCase:
         logger.info(f"Scanning {len(self._sources)} sources in parallel...")
 
         # Parallel fetch — each source runs in its own thread
+        fetch_start = time.perf_counter()
         source_results = self._fetch_all_parallel()
+        logger.info("Timing: fetching %.2fs", time.perf_counter() - fetch_start)
+        processing_start = time.perf_counter()
 
         # Update health records
         self._update_health(source_results, start)
@@ -77,7 +82,7 @@ class CollectThreatIntelUseCase:
         wl_ip_objects: Dict[str, IPAddress] = {}
 
         for result in source_results:
-            if not result.is_success and not result.from_cache:
+            if not result.is_success and not result.from_cache and not result.partial:
                 continue
             for ip in result.ips:
                 if wl_filter.is_whitelisted(ip):
@@ -110,6 +115,7 @@ class CollectThreatIntelUseCase:
         source_names = [s.name for s in self._sources]
         overlap = OverlapAnalyzer.analyze(frozen_ip_sources, source_names)
 
+        logger.info("Timing: processing %.2fs", time.perf_counter() - processing_start)
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
 
         return CollectionResult(
@@ -133,7 +139,7 @@ class CollectThreatIntelUseCase:
             for future in as_completed(futures):
                 results.append(future.result())
 
-        return results
+        return sorted(results, key=lambda r: r.source_name)
 
     def _safe_fetch(self, source: ThreatSource) -> SourceResult:
         """Run a single source fetch, catching all exceptions.
@@ -144,6 +150,14 @@ class CollectThreatIntelUseCase:
         skip_cache = source.name in _SELF_CACHED_SOURCES
 
         try:
+            fetch_result = getattr(source, "fetch_result", None)
+            if fetch_result is not None:
+                result = fetch_result()
+                logger.info("[%s] %s IPs%s", source.name, result.ip_count,
+                            " [CACHED]" if result.from_cache else "")
+                if not skip_cache and result.is_success and not result.from_cache and result.ips:
+                    self._source_cache.save(source.name, result.ips)
+                return result
             ips = source.fetch()
             logger.info(f"[{source.name}] {len(ips)} IPs")
 
@@ -159,8 +173,11 @@ class CollectThreatIntelUseCase:
             logger.error(f"[{source.name}] {error_msg}")
 
             cached_ips: Set[IPAddress] = set()
+            observed_at = None
             if not skip_cache:
-                cached_ips = self._source_cache.load(source.name)
+                cached = self._source_cache.load_result(source.name)
+                cached_ips = set(cached.ips)
+                observed_at = cached.observed_at
                 if cached_ips:
                     logger.info(
                         f"[{source.name}] Serving {len(cached_ips)} IPs from cache"
@@ -171,6 +188,7 @@ class CollectThreatIntelUseCase:
                 ips=frozenset(cached_ips),
                 error=error_msg,
                 from_cache=bool(cached_ips),
+                observed_at=observed_at,
             )
 
     def _update_health(self, results: List[SourceResult], now: datetime):
@@ -183,6 +201,13 @@ class CollectThreatIntelUseCase:
 
             if result.error:
                 record = record.with_failure(result.error, now)
+            elif result.from_cache or result.skipped:
+                # Cache use is not a new successful observation and must not reset failures.
+                if record.last_success is None and result.observed_at is not None:
+                    record = replace(record, last_success=result.observed_at,
+                                     last_ip_count=result.ip_count)
+                if not result.skipped:
+                    record = record.with_no_data()
             elif result.ip_count == 0:
                 record = record.with_no_data()
             else:

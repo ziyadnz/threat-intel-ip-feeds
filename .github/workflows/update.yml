@@ -5,6 +5,10 @@ on:
     - cron: '17 * * * *' # Her saatin 17. dakikasi
   workflow_dispatch:       # Manuel tetikleme
 
+concurrency:
+  group: update-ip-blacklists
+  cancel-in-progress: false
+
 permissions:
   contents: write
   issues: write
@@ -12,15 +16,18 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
 
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-runtime.txt
 
       - name: Run aggregator
         id: aggregator
@@ -28,11 +35,20 @@ jobs:
           ABUSEIPDB_API_KEY: ${{ secrets.ABUSEIPDB_API_KEY }}
           OTX_API_KEY: ${{ secrets.OTX_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python run.py
-        continue-on-error: true
+        run: |
+          set +e
+          python run.py
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -gt 1 ]; then
+            echo "::error::Aggregator failed; generated files will not be committed"
+            exit "$status"
+          fi
 
       - name: Commit and push results
         run: |
+          started=$SECONDS
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add output/
@@ -42,10 +58,11 @@ jobs:
             git commit -m "Update blacklists $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
           fi
+          echo "Git publish duration: $((SECONDS - started))s"
 
       - name: Report status
         if: always()
         run: |
-          if [ "${{ steps.aggregator.outcome }}" = "failure" ]; then
+          if [ "${{ steps.aggregator.outputs.exit_code }}" = "1" ]; then
             echo "::warning::Aggregator exited with errors. Check output/health_report.md"
           fi

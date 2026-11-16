@@ -7,6 +7,7 @@ Full STIX 2.1 compliance maintained — only optional fields removed.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import uuid
 
@@ -32,16 +33,35 @@ class STIXBundleWriter(OutputWriter):
             uuid.uuid5(uuid.NAMESPACE_URL, self.IDENTITY_SEED)
         )
 
-        objects = [self._build_identity(identity_id, timestamp)]
+        previous = {}
+        identity = self._build_identity(identity_id, timestamp)
+        try:
+            with open(path, encoding="utf-8") as f:
+                old_objects = json.load(f)["objects"]
+                previous = {obj["id"]: obj for obj in old_objects}
+                old_identity = old_objects[0]
+            if old_identity.get("id") == identity_id:
+                identity["created"] = old_identity["created"]
+                identity["modified"] = old_identity.get("modified", old_identity["created"])
+        except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError):
+            pass
+        objects = [identity]
 
-        for indicator in result.indicators:
-            objects.append(
-                self._build_indicator(indicator, identity_id, timestamp)
-            )
+        for indicator in sorted(result.indicators, key=lambda i: i.ip.raw):
+            obj = self._build_indicator(indicator, identity_id, timestamp)
+            old = previous.get(obj["id"])
+            if old:
+                obj["created"] = old.get("created", obj["created"])
+                obj["valid_from"] = old.get("valid_from", obj["valid_from"])
+                obj["modified"] = old.get("modified", obj["created"])
+                if any(old.get(key) != value for key, value in obj.items() if key != "modified"):
+                    obj["modified"] = timestamp
+            objects.append(obj)
 
+        content_hash = hashlib.sha256(json.dumps(objects, sort_keys=True).encode()).hexdigest()
         bundle = {
             "type": "bundle",
-            "id": "bundle--" + str(uuid.uuid5(uuid.NAMESPACE_URL, timestamp)),
+            "id": "bundle--" + str(uuid.uuid5(uuid.NAMESPACE_URL, content_hash)),
             "objects": objects,
         }
 
@@ -74,7 +94,9 @@ class STIXBundleWriter(OutputWriter):
             "created_by_ref": identity_id,
             "pattern": f"[{addr_type}:value = '{ip.raw}']",
             "pattern_type": "stix",
-            "valid_from": timestamp,
+            "created": indicator.first_seen.isoformat(),
+            "modified": indicator.first_seen.isoformat(),
+            "valid_from": indicator.first_seen.isoformat(),
             "indicator_types": ["malicious-activity"],
             "confidence": indicator.confidence.value,
             "labels": [indicator.category.value],

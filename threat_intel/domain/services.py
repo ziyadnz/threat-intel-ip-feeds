@@ -7,6 +7,8 @@ They encode the rules of the threat intelligence domain.
 from __future__ import annotations
 
 from collections import defaultdict
+import ipaddress
+from itertools import combinations
 from typing import Dict, FrozenSet, List, Set
 
 from threat_intel.domain.entities import (
@@ -64,13 +66,25 @@ class WhitelistFilter:
 
     def __init__(self, entries: List[WhitelistEntry]):
         self._entries = entries
+        self._addresses = {e._address for e in entries if e._address is not None}
+        self._networks = [e._network for e in entries if e._network is not None]
 
     @property
     def entry_count(self) -> int:
         return len(self._entries)
 
     def is_whitelisted(self, ip: IPAddress) -> bool:
-        return any(entry.covers(ip) for entry in self._entries)
+        if not self._entries:
+            return False
+        if ip.is_cidr:
+            target = ipaddress.ip_network(ip.raw)
+            return (any(a.version == target.version and a in target for a in self._addresses)
+                    or any(n.version == target.version and n.overlaps(target)
+                           for n in self._networks))
+        target = ipaddress.ip_address(ip.raw)
+        return target in self._addresses or any(
+            n.version == target.version and target in n for n in self._networks
+        )
 
     def filter_set(self, ips: Set[IPAddress]) -> tuple:
         """Return (kept, filtered_count)."""
@@ -122,28 +136,20 @@ class OverlapAnalyzer:
         max_overlap = max(source_counts)
         avg = sum(source_counts) / total
 
-        # Per-source unique vs shared
-        per_source_unique = {}
-        per_source_shared = {}
-        for src in source_names:
-            src_ips = [ip for ip, srcs in ip_to_sources.items() if src in srcs]
-            uniq = sum(1 for ip in src_ips if len(ip_to_sources[ip]) == 1)
-            per_source_unique[src] = uniq
-            per_source_shared[src] = len(src_ips) - uniq
-
-        # Top pair overlaps
-        active_sources = [s for s in source_names
-                          if per_source_unique.get(s, 0) + per_source_shared.get(s, 0) > 0]
-        pair_overlap = {}
-        for i, s1 in enumerate(active_sources):
-            s1_ips = {ip for ip, srcs in ip_to_sources.items() if s1 in srcs}
-            for s2 in active_sources[i + 1:]:
-                s2_ips = {ip for ip, srcs in ip_to_sources.items() if s2 in srcs}
-                shared = len(s1_ips & s2_ips)
-                if shared > 0:
-                    pair_overlap[f"{s1} & {s2}"] = shared
-
-        top_pairs = dict(sorted(pair_overlap.items(), key=lambda x: -x[1])[:10])
+        # Count memberships and pairs once instead of rescanning all IPs per pair.
+        per_source_unique = dict.fromkeys(source_names, 0)
+        per_source_shared = dict.fromkeys(source_names, 0)
+        pair_counts = defaultdict(int)
+        rank = {name: i for i, name in enumerate(source_names)}
+        for sources in ip_to_sources.values():
+            active = sorted((s for s in sources if s in rank), key=rank.get)
+            counts = per_source_unique if len(sources) == 1 else per_source_shared
+            for src in active:
+                counts[src] += 1
+            for pair in combinations(active, 2):
+                pair_counts[pair] += 1
+        ordered = sorted(pair_counts, key=lambda p: (-pair_counts[p], rank[p[0]], rank[p[1]]))
+        top_pairs = {f"{a} & {b}": pair_counts[a, b] for a, b in ordered[:10]}
 
         return OverlapMetrics(
             unique_single_source=unique_count,

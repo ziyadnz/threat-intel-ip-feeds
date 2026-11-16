@@ -32,11 +32,11 @@ class FullJSONWriter(OutputWriter):
             },
             "sources": {
                 sr.source_name: sr.ip_count
-                for sr in result.source_results
+                for sr in sorted(result.source_results, key=lambda r: r.source_name)
             },
             "failures": {
                 sr.source_name: sr.error
-                for sr in result.source_results
+                for sr in sorted(result.source_results, key=lambda r: r.source_name)
                 if not sr.is_success
             },
             "overlap": {
@@ -56,6 +56,6 @@ class FullJSONWriter(OutputWriter):
         }
 
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
 
         return path

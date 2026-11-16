@@ -36,6 +36,11 @@ class ThreatSource(ABC):
         """Fetch and return validated IPs. Raises on unrecoverable failure."""
 
 
+    def fetch_result(self) -> SourceResult:
+        """Structured fetch outcome; adapters may expose cache and skip status."""
+        return SourceResult(self.name, frozenset(self.fetch()))
+
+
 class HttpClient(ABC):
     """Port: performs HTTP requests with retry semantics."""
 

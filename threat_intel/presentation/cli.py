@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 
 from threat_intel.domain.entities import CollectionResult
 
@@ -84,7 +85,9 @@ class AppConfig:
         # Tuning
         self.request_timeout = int(os.environ.get("REQUEST_TIMEOUT", "60"))
         self.max_retries = int(os.environ.get("MAX_RETRIES", "3"))
-        self.connector_limit = int(os.environ.get("CONNECTOR_LIMIT", "30"))
+        self.connector_limit = int(os.environ.get("CONNECTOR_LIMIT", "10"))
+        if self.connector_limit < 1:
+            raise ValueError("CONNECTOR_LIMIT must be positive")
         self.min_success_ratio = float(os.environ.get("MIN_SUCCESS_RATIO", "0.2"))
         self.stale_threshold_days = int(os.environ.get("STALE_THRESHOLD_DAYS", "30"))
         self.ipsum_min_score = int(os.environ.get("IPSUM_MIN_SCORE", "2"))
@@ -162,7 +165,10 @@ def _print_summary(result: CollectionResult):
     failed_names = {sr.source_name for sr in result.failed_sources}
     cached_names = {sr.source_name for sr in result.source_results if sr.from_cache}
     for sr in sorted(result.source_results, key=lambda s: -s.ip_count):
-        if sr.source_name in cached_names:
+        if sr.partial:
+            mark = "P"
+            suffix = " [PARTIAL + CACHED]" if sr.from_cache else " [PARTIAL]"
+        elif sr.source_name in cached_names:
             mark = "C"
             suffix = " [CACHED]"
         elif sr.source_name in failed_names:
@@ -245,7 +251,9 @@ def _main():
             whitelist_repo=whitelist_repo,
             health_repo=health_repo,
             source_cache=source_cache,
+            max_workers=config.connector_limit,
         )
+        total_start = time.perf_counter()
         result = collect_uc.execute()
 
         # 2. Write outputs
@@ -270,6 +278,7 @@ def _main():
         report_uc.execute(result)
 
         # 5. Exit code
+        logger.info("Timing: total application %.2fs", time.perf_counter() - total_start)
         if not wrote:
             logger.critical("Output files NOT written. Exit code: 2")
             sys.exit(2)
@@ -287,4 +296,8 @@ def _main():
 
 def run():
     """Entry point."""
-    _main()
+    try:
+        _main()
+    except Exception:
+        logger.exception("Fatal aggregator error; refusing to publish this run")
+        sys.exit(2)

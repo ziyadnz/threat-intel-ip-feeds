@@ -40,6 +40,8 @@ class ReportHealthUseCase:
         """Generate report, send notifications. Returns report text."""
         health = self._health_repo.load_all()
 
+        health = {name: record for name, record in health.items()
+                  if name not in {r.source_name for r in result.source_results if r.skipped}}
         stale = self._find_stale(health)
         failing = self._find_failing(health)
         failures = result.failed_sources
@@ -49,7 +51,7 @@ class ReportHealthUseCase:
         self._report_writer.write(report, self._output_dir)
 
         if failures or stale or failing:
-            title = f"Source Health Alert - {result.timestamp.strftime('%Y-%m-%d')}"
+            title = "Source Health Alert"
             if failures:
                 title = f"[{len(failures)} FAILED] {title}"
             self._notifier.notify(title, report)
@@ -157,7 +159,7 @@ class ReportHealthUseCase:
 
         if stale:
             lines += [
-                f"## {len(stale)} Sources Stale (30+ days)", "",
+                f"## {len(stale)} Sources Stale ({self._stale_days}+ days)", "",
                 "| Source | Last Success | Consecutive Failures |",
                 "|--------|-------------|---------------------|",
             ]
@@ -188,7 +190,11 @@ class ReportHealthUseCase:
         ]
         failed_names = {sr.source_name for sr in failures}
         for sr in sorted(result.source_results, key=lambda s: -s.ip_count):
-            if sr.from_cache:
+            if sr.skipped:
+                status = "SKIPPED"
+            elif sr.partial:
+                status = "PARTIAL + CACHED" if sr.from_cache else "PARTIAL"
+            elif sr.from_cache:
                 status = "CACHED"
             elif sr.source_name in failed_names:
                 status = "FAILED"

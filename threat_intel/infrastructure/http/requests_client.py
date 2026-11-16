@@ -7,11 +7,14 @@ Thread-safe — each thread gets its own connection via requests.Session.
 from __future__ import annotations
 
 import logging
+import math
+import random
 import time
 import threading
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Dict, Optional
+from urllib.parse import urlsplit
 
 import requests
 
@@ -29,6 +32,17 @@ class HttpError(Exception):
         super().__init__(f"HTTP {status}: {message}")
 
 
+class RetryDeferred(HttpError):
+    """Server cooldown exceeds this run's wait budget; use source cache instead."""
+
+    retryable = False
+
+    def __init__(self, status: int, retry_after: float, limit: float):
+        super().__init__(status,
+                         f"Retry-After {retry_after:g}s exceeds {limit:g}s budget; "
+                         "deferring host for this run", retry_after=retry_after)
+
+
 class RequestsClient(HttpClient):
     """Sync HttpClient backed by requests.
 
@@ -40,10 +54,16 @@ class RequestsClient(HttpClient):
         default_timeout: int = 60,
         max_retries: int = 3,
         backoff_base: float = 2.0,
+        max_retry_after: float = 30.0,
     ):
         self._default_timeout = default_timeout
         self._max_retries = max_retries
         self._backoff_base = backoff_base
+        if not math.isfinite(max_retry_after) or max_retry_after < 0:
+            raise ValueError("max_retry_after must be a finite non-negative number")
+        self._max_retry_after = max_retry_after
+        self._deferred_hosts = {}
+        self._deferred_lock = threading.Lock()
         self._local = threading.local()
         self._sessions = []
         self._sessions_lock = threading.Lock()
@@ -78,6 +98,12 @@ class RequestsClient(HttpClient):
         last_error: Optional[Exception] = None
 
         for attempt in range(self._max_retries):
+            # A cooldown applies to the whole provider, including other OTX pages.
+            # Requests already in flight cannot be recalled.
+            with self._deferred_lock:
+                deferred = self._deferred_hosts.get(urlsplit(url).hostname)
+            if deferred is not None:
+                raise RetryDeferred(deferred.status, deferred.retry_after, self._max_retry_after)
             try:
                 resp = self._session.get(
                     url, headers=headers, timeout=timeout, verify=True,
@@ -107,7 +133,8 @@ class RequestsClient(HttpClient):
             wait = 0.0
             if retry_after:
                 try:
-                    wait = max(0.0, float(retry_after))
+                    seconds = float(retry_after)
+                    wait = max(0.0, seconds) if math.isfinite(seconds) else 0.0
                 except ValueError:
                     try:
                         date = parsedate_to_datetime(retry_after)
@@ -123,16 +150,24 @@ class RequestsClient(HttpClient):
         raise HttpError(status, body)
 
     def _wait_or_raise(self, url: str, attempt: int, error: Exception):
+        server_wait = getattr(error, "retry_after", 0)
+        if server_wait > self._max_retry_after:
+            deferred = RetryDeferred(error.status, server_wait, self._max_retry_after)
+            with self._deferred_lock:
+                self._deferred_hosts[urlsplit(url).hostname] = deferred
+            logger.warning("[%s] %s; source cache will be used if available", url, deferred)
+            raise deferred from error
         if attempt < self._max_retries - 1:
-            wait = max(self._backoff_base ** (attempt + 1),
-                       getattr(error, "retry_after", 0))
+            if getattr(error, "status", None) == 429 and server_wait == 0:
+                # Slower retries for throttling than for transient connection errors.
+                wait = (10 if attempt == 0 else 30) + random.uniform(0, 2)
+            else:
+                wait = max(self._backoff_base ** (attempt + 1), server_wait)
             logger.warning(
                 f"[{url}] Attempt {attempt + 1}/{self._max_retries} "
-                f"failed, retrying in {wait}s: {error}"
+                f"failed, retrying in {wait:.2f}s: {error}"
             )
             time.sleep(wait)
         else:
-            logger.error(
-                f"[{url}] All {self._max_retries} attempts failed: {error}"
-            )
+            logger.error(f"[{url}] All {self._max_retries} attempts failed: {error}")
             raise error

@@ -68,7 +68,8 @@ class TestRequestsClient:
             _mock_response(status=429, text="rate limited"),
             _mock_response(status=200, text="ok"),
         ]
-        with patch.object(client._session, "get", side_effect=responses):
+        with patch.object(client._session, "get", side_effect=responses), \
+                patch("threat_intel.infrastructure.http.requests_client.time.sleep"):
             text = client.get("http://test.example.com/ratelimit")
 
         assert text == "ok"

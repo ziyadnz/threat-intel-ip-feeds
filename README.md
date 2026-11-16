@@ -332,7 +332,7 @@ This isn't a script that breaks silently. Every failure is tracked, reported, an
 |-----------|-------------|
 | **Parallel Fetching** | Sources fetched using a bounded thread pool and thread-local `requests.Session` connections; default 10 workers |
 | **Error Isolation** | Each source is fetched independently; failures use its last cached data when available |
-| **Auto Retry** | Up to 3 attempts, with 2s and 4s backoff between attempts; longer server `Retry-After` delays are honored. Permanent 4xx errors skip retry |
+| **Auto Retry** | Up to 3 attempts: 2s/4s for transient errors; 10s/30s plus 0–2s jitter for 429 without a cooldown. Honor server cooldowns up to 30s; defer longer cooldowns to cache without retrying early. Permanent 4xx errors skip retry |
 | **Rollback Protection** | Refuse low-success collections; stage all feed formats before publishing, replace individual files atomically, and restore replaced files on a publishing error |
 | **Health Tracking** | `source_health.json` records every run: consecutive failures, last success, IP counts |
 | **Stale Detection** | Sources with no data for 30+ days are flagged |
@@ -369,6 +369,15 @@ API failures preserve their error status even when cached IPs are available; mis
 keys are reported as skipped. OTX keeps the last complete cache when some pages fail,
 and reports any newly collected partial data separately from a complete successful fetch.
 Existing SGB pagination delays, OTX concurrency limits, and HTTP timeouts remain in place.
+
+`MAX_RETRY_AFTER` sets the longest server-requested cooldown to wait through (default
+30 seconds, also explicit in the Actions workflow). A longer cooldown defers that host
+for the rest of the process, immediately using source cache when available. Other hosts
+continue normally. Already in-flight requests can finish, but OTX submits no later page
+batches or outer retries after a deferral. Cooldowns are not shortened into early retries.
+Without a server-provided cooldown, HTTP 429 uses 10s and 30s waits plus 0–2s jitter;
+normal transient failures retain 2s/4s backoff. This limit does not shorten request timeouts
+or the existing SGB pagination delay. A fresh process starts with no deferred hosts.
 
 CSV `first_seen` persists from the previous published CSV; `last_seen` advances on fresh
 successful observations, not cache reuse. An IP that disappears and later returns begins
@@ -416,7 +425,7 @@ flowchart TD
     C --> D{HTTP Request}
     D -->|Success| E[Extract & Validate IPs]
     D -->|Fail| F{Retry < 3?}
-    F -->|Yes| G[Backoff 2s/4s or Retry-After] --> D
+    F -->|Yes| G[Bounded retry or cache fallback] --> D
     F -->|No| H[Record Failure]
     E --> I[Record Success]
     H --> WF[Apply Whitelist Filter]

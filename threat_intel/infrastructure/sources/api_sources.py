@@ -105,8 +105,8 @@ class AbuseIPDBSource(_CachedAPISource):
 class AlienVaultOTXSource(_CachedAPISource):
     """Fetch bounded page batches, honor pagination, and retain fallback data.
 
-    Existing concurrency (3), HTTP retries/timeouts, and the two-second outer
-    retry delay are preserved. Permanent HTTP errors are not retried again.
+    Existing concurrency (3), HTTP timeouts, and the two-second outer retry
+    delay are preserved. Permanent HTTP errors and deferred hosts are not retried.
     """
 
     def __init__(self, http: HttpClient, api_key: str, cache_dir: str,
@@ -148,9 +148,15 @@ class AlienVaultOTXSource(_CachedAPISource):
                         failures[page] = error
                     else:
                         result.update(ips)
+                if any(not getattr(error, "retryable", True)
+                       for _, _, error in fetched if error is not None):
+                    break
             retryable = [p for p, e in failures.items()
-                         if getattr(e, "status", 0) not in range(400, 500)
-                         or getattr(e, "status", 0) == 429]
+                         if getattr(e, "retryable", True)
+                         and (getattr(e, "status", 0) not in range(400, 500)
+                              or getattr(e, "status", 0) == 429)]
+            if any(not getattr(e, "retryable", True) for e in failures.values()):
+                retryable = []
             if retryable:
                 time.sleep(max(2, *(getattr(failures[p], "retry_after", 0)
                                     for p in retryable)))

@@ -85,6 +85,7 @@ class AppConfig:
         # Tuning
         self.request_timeout = int(os.environ.get("REQUEST_TIMEOUT", "60"))
         self.max_retries = int(os.environ.get("MAX_RETRIES", "3"))
+        self.max_retry_after = float(os.environ.get("MAX_RETRY_AFTER", "30"))
         self.connector_limit = int(os.environ.get("CONNECTOR_LIMIT", "10"))
         if self.connector_limit < 1:
             raise ValueError("CONNECTOR_LIMIT must be positive")
@@ -230,6 +231,7 @@ def _main():
     http = RequestsClient(
         default_timeout=config.request_timeout,
         max_retries=config.max_retries,
+        max_retry_after=config.max_retry_after,
     )
 
     try:

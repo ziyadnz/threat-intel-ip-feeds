@@ -41,7 +41,7 @@ def cache(tmp_path, name, now, ips=("8.8.4.4",)):
     return path
 
 
-@pytest.mark.parametrize("header", ["120", format_datetime(NOW + timedelta(seconds=120))])
+@pytest.mark.parametrize("header", ["20", format_datetime(NOW + timedelta(seconds=20))])
 def test_retry_after_is_honored(header):
     client = RequestsClient()
     limited = MagicMock(status_code=429, text="limited", headers={"Retry-After": header})
@@ -51,7 +51,7 @@ def test_retry_after_is_honored(header):
             patch("threat_intel.infrastructure.http.requests_client.time.sleep") as sleep:
         clock.now.return_value = NOW
         assert client.get("https://example.invalid") == "ok"
-        sleep.assert_called_once_with(120)
+        sleep.assert_called_once_with(20)
     client.close()
 
 
@@ -286,10 +286,10 @@ def test_stix_modified_advances_only_for_changed_indicator_content(tmp_path):
 
 def test_otx_outer_retry_respects_server_delay(tmp_path):
     http = MagicMock()
-    http.get_json.side_effect = [HttpError(429, "limited", retry_after=120), pulse()]
+    http.get_json.side_effect = [HttpError(429, "limited", retry_after=20), pulse()]
     with patch("threat_intel.infrastructure.sources.api_sources.time.sleep") as sleep:
         outcome = AlienVaultOTXSource(http, "key", str(tmp_path), max_pages=1).fetch_result()
-    sleep.assert_called_once_with(120)
+    sleep.assert_called_once_with(20)
     assert outcome.is_success
 
 
@@ -318,3 +318,86 @@ def test_invalid_staged_json_is_not_published(tmp_path):
             return str(path)
     assert not WriteOutputsUseCase([InvalidWriter()], str(tmp_path)).execute(result())
     assert (tmp_path / "blacklist_full.json").read_text() == original
+
+
+@pytest.mark.parametrize("header", ["31", "120", format_datetime(NOW + timedelta(seconds=120))])
+def test_long_cooldown_defers_without_sleeping_or_retrying(header):
+    from threat_intel.infrastructure.http.requests_client import RetryDeferred
+    client = RequestsClient()
+    limited = MagicMock(status_code=429, text="limited", headers={"Retry-After": header})
+    with patch.object(client._session, "get", return_value=limited) as get, \
+            patch("threat_intel.infrastructure.http.requests_client.datetime") as clock, \
+            patch("threat_intel.infrastructure.http.requests_client.time.sleep") as sleep:
+        clock.now.return_value = NOW
+        with pytest.raises(RetryDeferred):
+            client.get("https://provider.example/page1")
+        with pytest.raises(RetryDeferred):
+            client.get("https://provider.example/page2")
+        assert get.call_count == 1
+        sleep.assert_not_called()
+    client.close()
+
+
+def test_429_without_retry_after_uses_slower_backoff_and_jitter():
+    client = RequestsClient()
+    limited = MagicMock(status_code=429, text="limited", headers={})
+    ok = MagicMock(status_code=200, text="ok")
+    with patch.object(client._session, "get", side_effect=[limited, limited, ok]), \
+            patch("threat_intel.infrastructure.http.requests_client.random.uniform", return_value=0.5), \
+            patch("threat_intel.infrastructure.http.requests_client.time.sleep") as sleep:
+        assert client.get("https://provider.example") == "ok"
+        assert [call.args[0] for call in sleep.call_args_list] == [10.5, 30.5]
+    client.close()
+
+
+def test_exactly_30_seconds_is_still_awaited():
+    client = RequestsClient()
+    limited = MagicMock(status_code=503, text="busy", headers={"Retry-After": "30"})
+    ok = MagicMock(status_code=200, text="ok")
+    with patch.object(client._session, "get", side_effect=[limited, ok]), \
+            patch("threat_intel.infrastructure.http.requests_client.time.sleep") as sleep:
+        assert client.get("https://provider.example") == "ok"
+        sleep.assert_called_once_with(30)
+    client.close()
+
+
+def test_deferred_host_does_not_block_other_sources():
+    from threat_intel.infrastructure.http.requests_client import RetryDeferred
+    client = RequestsClient()
+    limited = MagicMock(status_code=503, text="busy", headers={"Retry-After": "120"})
+    ok = MagicMock(status_code=200, text="ok")
+    with patch.object(client._session, "get", side_effect=[limited, ok]) as get:
+        with pytest.raises(RetryDeferred):
+            client.get("https://blocked.example/feed")
+        assert client.get("https://healthy.example/feed") == "ok"
+        assert get.call_count == 2
+    client.close()
+
+
+def test_otx_deferral_stops_later_batches_and_outer_retries(tmp_path):
+    from threat_intel.infrastructure.http.requests_client import RetryDeferred
+    path = cache(tmp_path, "otx_cache.json", NOW - timedelta(days=1))
+    before = path.read_bytes()
+    http = MagicMock()
+    http.get_json.side_effect = RetryDeferred(429, 120, 30)
+    with patch("threat_intel.infrastructure.sources.api_sources.time.sleep") as sleep:
+        outcome = AlienVaultOTXSource(http, "key", str(tmp_path)).fetch_result()
+    assert http.get_json.call_count == 3  # Only the already submitted batch.
+    sleep.assert_not_called()
+    assert outcome.from_cache and outcome.error
+    assert path.read_bytes() == before
+
+
+def test_abuseipdb_long_cooldown_uses_cache_without_waiting(tmp_path):
+    path = cache(tmp_path, "abuseipdb_cache.json", NOW - timedelta(days=1))
+    before = path.read_bytes()
+    client = RequestsClient()
+    limited = MagicMock(status_code=429, text="limited", headers={"Retry-After": "120"})
+    with patch.object(client._session, "get", return_value=limited) as get, \
+            patch("threat_intel.infrastructure.http.requests_client.time.sleep") as sleep:
+        outcome = AbuseIPDBSource(client, "key", str(tmp_path)).fetch_result()
+    assert get.call_count == 1
+    sleep.assert_not_called()
+    assert outcome.from_cache and "deferring host" in outcome.error
+    assert path.read_bytes() == before
+    client.close()

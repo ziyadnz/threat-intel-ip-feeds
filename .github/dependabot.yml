@@ -2,6 +2,10 @@ version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
+    # Generated IP lists and the whitelist are data, not Python requirements.
+    exclude-paths:
+      - "output/**"
+      - "whitelist.txt"
     schedule:
       interval: "weekly"
       day: "monday"

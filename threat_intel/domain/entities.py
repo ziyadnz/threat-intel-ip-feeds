@@ -188,6 +188,8 @@ class SourceResult:
     partial: bool = False
     skipped: bool = False
     observed_at: Optional[datetime] = None
+    cache_reason: Optional[str] = None
+    elapsed_seconds: Optional[float] = None
 
     @property
     def is_success(self) -> bool:

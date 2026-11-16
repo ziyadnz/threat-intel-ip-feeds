@@ -7,6 +7,7 @@ to open/close GitHub issues based on current health status.
 from __future__ import annotations
 
 import logging
+import html
 from datetime import datetime, timezone
 from typing import List
 
@@ -79,6 +80,16 @@ class ReportHealthUseCase:
             key=lambda r: -r.consecutive_failures,
         )
 
+    @staticmethod
+    def _cell(value, limit=300):
+        # HTTP errors may contain HTML, newlines, or pipes that break Markdown tables.
+        text = " ".join(str(value).split())[:limit]
+        return html.escape(text, quote=False).replace("|", "\\|")
+
+    @staticmethod
+    def _duration(source):
+        return f"{source.elapsed_seconds:.2f}s" if source.elapsed_seconds is not None else "Unknown"
+
     def _build_report(self, result, failures, stale, failing) -> str:
         lines = [
             "# IP Blacklist Aggregator - Health Report",
@@ -86,6 +97,8 @@ class ReportHealthUseCase:
             f"**Date:** {result.timestamp.isoformat()}",
             f"**Duration:** {result.elapsed_seconds}s",
             f"**Successful:** {result.successful_sources}/{result.total_sources}",
+            f"**Fresh Fetches:** {sum(1 for sr in result.source_results if sr.is_success and sr.ip_count > 0 and not sr.from_cache and not sr.skipped)}",
+            f"**Sources Using Cache:** {sum(1 for sr in result.source_results if sr.from_cache)}",
         ]
         if result.whitelist_filtered_count > 0:
             lines.append(
@@ -105,6 +118,28 @@ class ReportHealthUseCase:
             lines.append("")
 
         cached = [sr for sr in result.source_results if sr.from_cache]
+        if cached:
+            lines += [
+                "## Cache Usage", "",
+                "Cache reuse is separated from a fresh successful fetch. Duration includes requests, retries, and waits.",
+                "",
+                "| Source | Reason | Cache Observed At (UTC) | Cache Age at Run Start | Fetch Duration |",
+                "|--------|--------|-------------------------|------------------------|----------------|",
+            ]
+            for sr in sorted(cached, key=lambda s: s.source_name):
+                observed = sr.observed_at.astimezone(timezone.utc).isoformat() if sr.observed_at else "Unknown"
+                if sr.observed_at:
+                    seconds = max(0, int((result.timestamp - sr.observed_at).total_seconds()))
+                    hours, remainder = divmod(seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    age = f"{hours}h {minutes}m {seconds}s"
+                else:
+                    age = "Unknown"
+                reason = sr.cache_reason or sr.error or "Cache reuse; reason unavailable"
+                lines.append(f"| {self._cell(sr.source_name)} | {self._cell(reason)} | {observed} | {age} | {self._duration(sr)} |")
+            lines.append("")
+        else:
+            lines += ["## Cache Usage", "", "No source used cached data in this run.", ""]
         if failures:
             lines += [
                 "## Failed Sources This Run", "",
@@ -114,7 +149,7 @@ class ReportHealthUseCase:
             for sr in failures:
                 cache_status = f"{sr.ip_count:,} IPs from cache" if sr.from_cache else "No cache"
                 lines.append(
-                    f"| {sr.source_name} | {(sr.error or '')[:200]} | {cache_status} |"
+                    f"| {self._cell(sr.source_name)} | {self._cell(sr.error or '', 500)} | {cache_status} |"
                 )
             lines.append("")
 
@@ -176,7 +211,7 @@ class ReportHealthUseCase:
             ]
             for r in failing:
                 lf = r.last_failure.strftime("%Y-%m-%d") if r.last_failure else "?"
-                reason = (r.last_failure_reason or "Unknown")[:60]
+                reason = self._cell(r.last_failure_reason or "Unknown")
                 lines.append(
                     f"| {r.source_name} | {r.consecutive_failures} | {lf} | {reason} |"
                 )
@@ -185,8 +220,8 @@ class ReportHealthUseCase:
         # Per-source summary table
         lines += [
             "## All Sources", "",
-            "| Source | IPs | Status |",
-            "|--------|-----|--------|",
+            "| Source | IPs | Status | Fetch Duration | Details |",
+            "|--------|-----|--------|----------------|---------|",
         ]
         failed_names = {sr.source_name for sr in failures}
         for sr in sorted(result.source_results, key=lambda s: -s.ip_count):
@@ -202,7 +237,17 @@ class ReportHealthUseCase:
                 status = "OK"
             else:
                 status = "EMPTY"
-            lines.append(f"| {sr.source_name} | {sr.ip_count:,} | {status} |")
+            if sr.skipped:
+                details = "API credentials not configured; fetch skipped"
+            elif sr.from_cache:
+                details = sr.cache_reason or sr.error or "Cache reuse; reason unavailable"
+            elif sr.error:
+                details = sr.error
+            elif sr.ip_count > 0:
+                details = "Fresh fetch"
+            else:
+                details = "Successful fetch returned no valid IPs"
+            lines.append(f"| {self._cell(sr.source_name)} | {sr.ip_count:,} | {status} | {self._duration(sr)} | {self._cell(details)} |")
         lines.append("")
 
         if not failures and not stale and not failing:

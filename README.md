@@ -388,6 +388,12 @@ cache timestamps still update to describe actual refreshes, so every run may sti
 
 Actions serializes collection runs and has a 90-minute safety timeout. Fatal runs do not
 commit output. Logs report fetching, processing, publishing, and total application time.
+The health report also shows each source's fetch duration, whether its data is fresh,
+and a dedicated cache-usage table with the reason, original observation time, and age.
+Planned AbuseIPDB cache reuse is labeled with the next refresh time; failed fetches
+retain their timeout, HTTP error, or deferred-cooldown explanation. These details are
+also available under `source_details` in `blacklist_full.json`. A slow successful fetch
+alone does not trigger cache fallback; source timeouts and retry policy still apply.
 `CONNECTOR_LIMIT` controls the source worker count (default 10); it does not change OTX's
 separate three-page concurrency limit. No Actions dependency cache or artifacts are added.
 

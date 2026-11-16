@@ -34,6 +34,19 @@ class FullJSONWriter(OutputWriter):
                 sr.source_name: sr.ip_count
                 for sr in sorted(result.source_results, key=lambda r: r.source_name)
             },
+            "source_details": {
+                sr.source_name: {
+                    "ip_count": sr.ip_count,
+                    "from_cache": sr.from_cache,
+                    "partial": sr.partial,
+                    "skipped": sr.skipped,
+                    "error": sr.error,
+                    "cache_reason": sr.cache_reason,
+                    "observed_at": sr.observed_at.isoformat() if sr.observed_at else None,
+                    "elapsed_seconds": sr.elapsed_seconds,
+                }
+                for sr in sorted(result.source_results, key=lambda r: r.source_name)
+            },
             "failures": {
                 sr.source_name: sr.error
                 for sr in sorted(result.source_results, key=lambda r: r.source_name)

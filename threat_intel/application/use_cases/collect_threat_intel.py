@@ -142,6 +142,18 @@ class CollectThreatIntelUseCase:
         return sorted(results, key=lambda r: r.source_name)
 
     def _safe_fetch(self, source: ThreatSource) -> SourceResult:
+        started = time.perf_counter()
+        result = self._fetch_source(source)
+        elapsed = round(time.perf_counter() - started, 2)
+        if result.from_cache:
+            log = logger.warning if result.error else logger.info
+            log("[%s] Cache reason: %s", source.name,
+                result.cache_reason or result.error or "Reason unavailable")
+        logger.info("Timing: [%s] %.2fs%s", source.name, elapsed,
+                    " (cache fallback)" if result.from_cache and result.error else "")
+        return replace(result, elapsed_seconds=elapsed)
+
+    def _fetch_source(self, source: ThreatSource) -> SourceResult:
         """Run a single source fetch, catching all exceptions.
 
         On success: caches IPs for future fallback.
@@ -189,6 +201,7 @@ class CollectThreatIntelUseCase:
                 error=error_msg,
                 from_cache=bool(cached_ips),
                 observed_at=observed_at,
+                cache_reason=f"Fetch failed: {error_msg}" if cached_ips else None,
             )
 
     def _update_health(self, results: List[SourceResult], now: datetime):

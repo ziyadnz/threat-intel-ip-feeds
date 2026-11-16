@@ -401,3 +401,86 @@ def test_abuseipdb_long_cooldown_uses_cache_without_waiting(tmp_path):
     assert outcome.from_cache and "deferring host" in outcome.error
     assert path.read_bytes() == before
     client.close()
+
+
+def health_report(r):
+    from threat_intel.application.use_cases.report_health import ReportHealthUseCase
+    return ReportHealthUseCase(MagicMock(), MagicMock(), MagicMock(), "/tmp/unused")._build_report(
+        r, r.failed_sources, [], []
+    )
+
+
+@pytest.mark.parametrize("reason", [
+    "Scheduled cache reuse: 4h refresh interval; next fetch due tomorrow",
+    "Fetch failed: Timeout: Read timed out",
+    "Fetch failed: HttpError: HTTP 503: unavailable",
+    "Fetch failed: RetryDeferred: HTTP 429: Retry-After 120s exceeds 30s budget",
+])
+def test_health_report_explains_cache_reason_age_and_duration(reason):
+    r = result(cached=True)
+    r.source_results = [replace(r.source_results[0], cache_reason=reason,
+                                elapsed_seconds=12.34, observed_at=NOW - timedelta(hours=2))]
+    report = health_report(r)
+    assert "## Cache Usage" in report
+    assert reason in report
+    assert "2h 0m 0s" in report
+    assert "12.34s" in report
+    assert "**Fresh Fetches:** 0" in report
+    assert "**Sources Using Cache:** 1" in report
+
+
+def test_health_report_does_not_confuse_slow_success_with_cache():
+    r = result()
+    r.source_results = [replace(r.source_results[0], elapsed_seconds=104.41)]
+    report = health_report(r)
+    assert "No source used cached data in this run." in report
+    assert "104.41s | Fresh fetch" in report
+    assert "**Sources Using Cache:** 0" in report
+
+
+def test_health_report_escapes_http_html_and_table_delimiters():
+    r = result(cached=True)
+    r.source_results = [replace(r.source_results[0], error="HTTP 503: <html>\nblocked|retry",
+                                cache_reason="HTTP 503: <html>\nblocked|retry")]
+    report = health_report(r)
+    assert "<html>" not in report
+    assert "&lt;html&gt; blocked\\|retry" in report
+    assert "| A | HTTP 503: &lt;html&gt; blocked\\|retry |" in report
+
+
+def test_generic_source_timeout_keeps_reason_and_measures_duration(tmp_path):
+    import requests
+    source = MagicMock()
+    source.name = "A"
+    source.fetch_result.side_effect = requests.exceptions.Timeout("read timed out")
+    repo = SourceCacheRepository(str(tmp_path))
+    repo.save("A", {IPAddress.parse("8.8.4.4")})
+    uc = CollectThreatIntelUseCase([source], MagicMock(), MagicMock(), repo)
+    outcome = uc._safe_fetch(source)
+    assert outcome.from_cache
+    assert "Timeout" in outcome.cache_reason
+    assert outcome.elapsed_seconds is not None and outcome.elapsed_seconds >= 0
+    assert outcome.observed_at is not None
+
+
+def test_abuseipdb_scheduled_cache_explains_next_refresh(tmp_path):
+    now = datetime.now(timezone.utc)
+    cache(tmp_path, "abuseipdb_cache.json", now - timedelta(hours=1))
+    outcome = AbuseIPDBSource(MagicMock(), "key", str(tmp_path)).fetch_result()
+    assert outcome.from_cache and outcome.error is None
+    assert "Scheduled cache reuse: 4h" in outcome.cache_reason
+    assert "next fetch due" in outcome.cache_reason
+
+
+def test_json_source_details_include_cache_cause_and_fetch_duration(tmp_path):
+    from threat_intel.infrastructure.writers.json_writer import FullJSONWriter
+    r = result(cached=True)
+    r.source_results = [replace(r.source_results[0], cache_reason="Scheduled reuse",
+                                elapsed_seconds=0.02, observed_at=NOW - timedelta(hours=1))]
+    path = FullJSONWriter().write(r, str(tmp_path))
+    with open(path) as f:
+        details = json.load(f)["source_details"]["A"]
+    assert details["from_cache"] is True
+    assert details["cache_reason"] == "Scheduled reuse"
+    assert details["elapsed_seconds"] == 0.02
+    assert details["observed_at"] == (NOW - timedelta(hours=1)).isoformat()

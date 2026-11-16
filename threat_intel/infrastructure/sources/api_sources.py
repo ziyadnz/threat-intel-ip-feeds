@@ -7,6 +7,7 @@ import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Set
 
@@ -40,7 +41,8 @@ class _CachedAPISource(ThreatSource):
             pass
         return SourceResult(self.name, frozenset(ips), error=error,
                             from_cache=bool(ips), skipped=skipped,
-                            observed_at=observed_at)
+                            observed_at=observed_at,
+                            cache_reason=f"Fetch failed: {error}" if error and ips else None)
 
     def _save_cache(self, ips, now):
         try:
@@ -83,7 +85,10 @@ class AbuseIPDBSource(_CachedAPISource):
         now = datetime.now(timezone.utc)
         cached = self._cached_result()
         if cached.observed_at and now - cached.observed_at < self._refresh_interval:
-            return cached
+            due = cached.observed_at + self._refresh_interval
+            return replace(cached, cache_reason=(
+                f"Scheduled cache reuse: {self._refresh_interval.total_seconds() / 3600:g}h "
+                f"refresh interval; next fetch due {due.isoformat()}"))
         headers = {"Key": self._api_key, "Accept": "application/json",
                    "User-Agent": "IP-Blacklist-Aggregator/6.0"}
         url = f"{ABUSEIPDB_BLACKLIST}?confidenceMinimum={self._confidence_min}&limit=10000"
@@ -180,7 +185,8 @@ class AlienVaultOTXSource(_CachedAPISource):
             return SourceResult(self.name, frozenset(result | set(cached.ips)),
                                 error=cached.error, from_cache=bool(cached.ips),
                                 partial=bool(result),
-                                observed_at=cached.observed_at)
+                                observed_at=cached.observed_at,
+                                cache_reason=cached.cache_reason)
         if not result:
             return self._cached_result(error="OTX returned no valid IPs; preserving cache")
         self._save_cache(result, now)

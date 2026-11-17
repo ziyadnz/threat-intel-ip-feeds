@@ -1,89 +1,85 @@
 # IP Blacklist Aggregator - Health Report
 
-**Date:** 2026-11-16T20:29:25.742311+00:00
-**Duration:** 166.41s
+**Date:** 2026-11-17T03:54:07.712508+00:00
+**Duration:** 15.04s
 **Successful:** 19/19
-**Fresh Fetches:** 18
-**Sources Using Cache:** 1
+**Fresh Fetches:** 19
+**Sources Using Cache:** 0
 
 ## Cache Usage
 
-Cache reuse is separated from a fresh successful fetch. Duration includes requests, retries, and waits.
-
-| Source | Reason | Cache Observed At (UTC) | Cache Age at Run Start | Fetch Duration |
-|--------|--------|-------------------------|------------------------|----------------|
-| AbuseIPDB | Scheduled cache reuse: 4h refresh interval; next fetch due 2026-11-16T23:57:48.844670+00:00 | 2026-11-16T19:57:48.844670+00:00 | 0h 31m 36s | 0.06s |
+No source used cached data in this run.
 
 ## Deduplication & Source Overlap
 
 | Metric | Value |
 |--------|-------|
-| Unique to single source | 57,178 |
-| Found in multiple sources | 43,166 |
+| Unique to single source | 51,360 |
+| Found in multiple sources | 43,623 |
 | Max source overlap | 8 |
-| Avg sources per IP | 1.79 |
+| Avg sources per IP | 1.87 |
 
 ### Per-Source Contribution
 
 | Source | Unique | Shared | Unique % |
 |--------|--------|--------|----------|
-| RTBH (Turkiye) | 25,957 | 20,706 | 55.6% |
-| Stamparm IPsum | 11,536 | 26,552 | 30.3% |
-| SGB (Turkiye) | 9,622 | 378 | 96.2% |
-| CINS Army | 5,593 | 9,407 | 37.3% |
+| RTBH (Turkiye) | 23,571 | 20,530 | 53.4% |
+| Stamparm IPsum | 9,773 | 27,872 | 26.0% |
+| SGB (Turkiye) | 9,621 | 379 | 96.2% |
+| CINS Army | 3,950 | 11,050 | 26.3% |
 | Spamhaus DROP | 1,735 | 0 | 100.0% |
-| AbuseIPDB | 1,680 | 8,320 | 16.8% |
-| Tor Exit Nodes | 318 | 950 | 25.1% |
+| AbuseIPDB | 1,664 | 8,336 | 16.6% |
+| Tor Exit Nodes | 334 | 935 | 26.3% |
 | AlienVault OTX | 280 | 86 | 76.5% |
-| GreenSnow | 145 | 934 | 13.4% |
-| BinaryDefense | 104 | 995 | 9.5% |
+| BinaryDefense | 146 | 1,254 | 10.4% |
+| GreenSnow | 133 | 1,255 | 9.6% |
 | Spamhaus DROPv6 | 90 | 0 | 100.0% |
-| Emerging Threats | 57 | 527 | 9.8% |
-| Blocklist.de (all) | 46 | 22,746 | 0.2% |
-| Blocklist.de (strongips) | 15 | 271 | 5.2% |
-| Blocklist.de (ssh) | 0 | 4,360 | 0.0% |
-| Blocklist.de (mail) | 0 | 13,291 | 0.0% |
-| Blocklist.de (apache) | 0 | 9,076 | 0.0% |
-| Blocklist.de (bots) | 0 | 3,249 | 0.0% |
-| Blocklist.de (bruteforcelogin) | 0 | 719 | 0.0% |
+| Blocklist.de (all) | 35 | 23,019 | 0.2% |
+| Blocklist.de (strongips) | 17 | 275 | 5.8% |
+| Emerging Threats | 10 | 569 | 1.7% |
+| Blocklist.de (mail) | 1 | 13,524 | 0.0% |
+| Blocklist.de (ssh) | 0 | 4,518 | 0.0% |
+| Blocklist.de (apache) | 0 | 9,105 | 0.0% |
+| Blocklist.de (bots) | 0 | 3,101 | 0.0% |
+| Blocklist.de (bruteforcelogin) | 0 | 708 | 0.0% |
 
 ### Top Source Pair Overlaps
 
 | Pair | Shared IPs |
 |------|-----------|
-| Stamparm IPsum & RTBH (Turkiye) | 16,758 |
-| Blocklist.de (all) & Blocklist.de (mail) | 13,291 |
-| Blocklist.de (all) & Blocklist.de (apache) | 9,076 |
-| CINS Army & Stamparm IPsum | 8,785 |
-| Blocklist.de (all) & RTBH (Turkiye) | 8,678 |
+| Stamparm IPsum & RTBH (Turkiye) | 16,386 |
+| Blocklist.de (all) & Blocklist.de (mail) | 13,524 |
+| CINS Army & Stamparm IPsum | 10,756 |
+| Blocklist.de (all) & RTBH (Turkiye) | 9,670 |
+| Blocklist.de (all) & Blocklist.de (apache) | 9,104 |
+| Blocklist.de (all) & Stamparm IPsum | 8,478 |
 | Blocklist.de (mail) & Blocklist.de (apache) | 7,711 |
-| Blocklist.de (all) & Stamparm IPsum | 7,675 |
-| Stamparm IPsum & AbuseIPDB | 7,277 |
-| RTBH (Turkiye) & AbuseIPDB | 5,300 |
-| Blocklist.de (all) & Blocklist.de (ssh) | 4,354 |
+| Stamparm IPsum & AbuseIPDB | 7,637 |
+| RTBH (Turkiye) & AbuseIPDB | 5,317 |
+| Blocklist.de (all) & Blocklist.de (ssh) | 4,518 |
 
 ## All Sources
 
 | Source | IPs | Status | Fetch Duration | Details |
 |--------|-----|--------|----------------|---------|
-| RTBH (Turkiye) | 46,663 | OK | 2.06s | Fresh fetch |
-| Stamparm IPsum | 38,088 | OK | 0.98s | Fresh fetch |
-| Blocklist.de (all) | 22,792 | OK | 1.19s | Fresh fetch |
-| CINS Army | 15,000 | OK | 0.85s | Fresh fetch |
-| Blocklist.de (mail) | 13,291 | OK | 0.86s | Fresh fetch |
-| AbuseIPDB | 10,000 | CACHED | 0.06s | Scheduled cache reuse: 4h refresh interval; next fetch due 2026-11-16T23:57:48.844670+00:00 |
-| SGB (Turkiye) | 10,000 | OK | 4.88s | Fresh fetch |
-| Blocklist.de (apache) | 9,076 | OK | 0.85s | Fresh fetch |
-| Blocklist.de (ssh) | 4,360 | OK | 0.78s | Fresh fetch |
-| Blocklist.de (bots) | 3,249 | OK | 0.64s | Fresh fetch |
-| Spamhaus DROP | 1,735 | OK | 0.28s | Fresh fetch |
-| Tor Exit Nodes | 1,268 | OK | 0.62s | Fresh fetch |
-| BinaryDefense | 1,099 | OK | 0.63s | Fresh fetch |
-| GreenSnow | 1,079 | OK | 0.74s | Fresh fetch |
-| Blocklist.de (bruteforcelogin) | 719 | OK | 0.41s | Fresh fetch |
-| Emerging Threats | 584 | OK | 0.51s | Fresh fetch |
-| AlienVault OTX | 366 | OK | 164.44s | Fresh fetch |
-| Blocklist.de (strongips) | 286 | OK | 0.39s | Fresh fetch |
-| Spamhaus DROPv6 | 90 | OK | 0.28s | Fresh fetch |
+| RTBH (Turkiye) | 44,101 | OK | 1.60s | Fresh fetch |
+| Stamparm IPsum | 37,645 | OK | 1.21s | Fresh fetch |
+| Blocklist.de (all) | 23,054 | OK | 1.06s | Fresh fetch |
+| CINS Army | 15,000 | OK | 0.76s | Fresh fetch |
+| Blocklist.de (mail) | 13,525 | OK | 0.59s | Fresh fetch |
+| AbuseIPDB | 10,000 | OK | 0.96s | Fresh fetch |
+| SGB (Turkiye) | 10,000 | OK | 8.80s | Fresh fetch |
+| Blocklist.de (apache) | 9,105 | OK | 0.73s | Fresh fetch |
+| Blocklist.de (ssh) | 4,518 | OK | 0.58s | Fresh fetch |
+| Blocklist.de (bots) | 3,101 | OK | 0.42s | Fresh fetch |
+| Spamhaus DROP | 1,735 | OK | 0.09s | Fresh fetch |
+| BinaryDefense | 1,400 | OK | 0.63s | Fresh fetch |
+| GreenSnow | 1,388 | OK | 0.73s | Fresh fetch |
+| Tor Exit Nodes | 1,269 | OK | 0.81s | Fresh fetch |
+| Blocklist.de (bruteforcelogin) | 708 | OK | 0.23s | Fresh fetch |
+| Emerging Threats | 579 | OK | 0.46s | Fresh fetch |
+| AlienVault OTX | 366 | OK | 13.02s | Fresh fetch |
+| Blocklist.de (strongips) | 292 | OK | 0.20s | Fresh fetch |
+| Spamhaus DROPv6 | 90 | OK | 0.09s | Fresh fetch |
 
 ## All sources healthy.
